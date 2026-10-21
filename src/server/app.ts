@@ -4,6 +4,9 @@ import type { Db } from "./db/client";
 import { type Config, DEV_UI_PORT } from "./lib/config";
 import { notFound, onError } from "./lib/errors";
 import { requestGuard } from "./lib/request-guard";
+import { createElevenLabs } from "./modules/audio/elevenlabs";
+import { createAudioRepo } from "./modules/audio/repo";
+import { registerAudioRoutes } from "./modules/audio/routes";
 import { createCostSync, type Timers } from "./modules/generations/cost-sync";
 import { createJobSlot } from "./modules/generations/jobs";
 import { createGenerationsRepo } from "./modules/generations/repo";
@@ -73,6 +76,13 @@ export function createApp(deps: AppDeps, options: CreateAppOptions = {}) {
   service.sweepOnBoot(); // drop leftovers of an interrupted save (ADR-0006)
   costSync.resume(); // pending costs survive restarts (ADR-0013)
   registerGenerationsRoutes(api, { service, files });
+
+  registerAudioRoutes(api, {
+    repo: createAudioRepo(deps.db),
+    elevenLabs: createElevenLabs(deps.config.elevenLabsApiKey, deps.fetch),
+    dataDir: deps.config.dataDir,
+    now: deps.now,
+  });
 
   const app = new Hono();
   app.onError(onError);

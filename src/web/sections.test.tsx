@@ -6,10 +6,11 @@ import { App } from "./App";
 import { SECTIONS, type Section, sectionFor } from "./sections";
 
 describe("sections registry", () => {
-  it("lists Generate, Gallery then Models, Generate at the root address", () => {
+  it("lists Generate, Gallery, Speech then Models, Generate at the root address", () => {
     expect(SECTIONS.map((s) => [s.id, s.path, s.label])).toEqual([
       ["generate", "/", "Generate"],
       ["gallery", "/gallery", "Gallery"],
+      ["speech", "/speech", "Speech"],
       ["models", "/models", "Models"],
     ]);
   });

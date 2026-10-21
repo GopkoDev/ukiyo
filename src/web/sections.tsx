@@ -1,5 +1,6 @@
-import { Boxes, Images, type LucideIcon, Sparkles } from "lucide-react";
+import { AudioLines, Boxes, Images, type LucideIcon, Sparkles } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
+import { SpeechPage } from "@/features/audio/SpeechPage";
 import { Gallery } from "@/features/gallery/Gallery";
 import { GalleryViews } from "@/features/gallery/GalleryViews";
 import { GeneratePanel } from "@/features/generate/GeneratePanel";
@@ -63,6 +64,7 @@ export const SECTIONS: readonly Section[] = [
     page: GalleryPage,
     owns: (route) => route.name === "detail",
   },
+  { id: "speech", path: "/speech", label: "Speech", icon: AudioLines, page: SpeechPage },
   { id: "models", path: "/models", label: "Models", icon: Boxes, page: ModelsPage },
 ];
 

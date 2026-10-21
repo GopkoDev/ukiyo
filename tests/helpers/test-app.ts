@@ -12,6 +12,7 @@ export function createTestApp(overrides: Partial<Config> = {}, deps: Omit<Partia
   const config: Config = {
     openRouterApiKey: undefined,
     aiGatewayApiKey: undefined,
+    elevenLabsApiKey: undefined,
     dataDir,
     port: 0,
     ...overrides,
