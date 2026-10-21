@@ -7,33 +7,36 @@ const Row = z
     id: z.string(),
     created_at: z.string(),
     model: z.string(),
-    voice_id: z.string(),
-    voice_name: z.string(),
+    voice: z.string(),
     text: z.string(),
     settings: z.string(),
     file_path: z.string(),
     media_type: z.string(),
-    characters: z.number().int().nullable(),
+    characters: z.number().int(),
+    cost_micros: z.number().int().nullable(),
+    cost_ref: z.string().nullable(),
   })
   .transform((r) => ({
     id: r.id,
     createdAt: r.created_at,
     model: r.model,
-    voiceId: r.voice_id,
-    voiceName: r.voice_name,
+    voice: r.voice,
     text: r.text,
     settings: VoiceSettings.parse(JSON.parse(r.settings)),
     filePath: r.file_path,
     mediaType: r.media_type,
     characters: r.characters,
+    costMicros: r.cost_micros,
+    costRef: r.cost_ref,
   }));
 
 export type AudioRecord = z.output<typeof Row>;
 
 export function createAudioRepo(db: Db) {
   const insertStmt = db.prepare(
-    `INSERT INTO audio_generations (id, created_at, model, voice_id, voice_name, text, settings, file_path, media_type, characters)
-     VALUES (@id, @createdAt, @model, @voiceId, @voiceName, @text, @settings, @filePath, @mediaType, @characters)`,
+    `INSERT INTO audio_generations
+       (id, created_at, model, voice, text, settings, file_path, media_type, characters, cost_micros, cost_ref)
+     VALUES (@id, @createdAt, @model, @voice, @text, @settings, @filePath, @mediaType, @characters, @costMicros, @costRef)`,
   );
   const listStmt = db.prepare("SELECT * FROM audio_generations ORDER BY id DESC LIMIT ?");
   const getStmt = db.prepare("SELECT * FROM audio_generations WHERE id = ?");

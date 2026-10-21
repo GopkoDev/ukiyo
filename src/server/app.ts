@@ -4,7 +4,7 @@ import type { Db } from "./db/client";
 import { type Config, DEV_UI_PORT } from "./lib/config";
 import { notFound, onError } from "./lib/errors";
 import { requestGuard } from "./lib/request-guard";
-import { createElevenLabs } from "./modules/audio/elevenlabs";
+import { createOpenRouterSpeech } from "./modules/audio/openrouter-speech";
 import { createAudioRepo } from "./modules/audio/repo";
 import { registerAudioRoutes } from "./modules/audio/routes";
 import { createCostSync, type Timers } from "./modules/generations/cost-sync";
@@ -79,7 +79,7 @@ export function createApp(deps: AppDeps, options: CreateAppOptions = {}) {
 
   registerAudioRoutes(api, {
     repo: createAudioRepo(deps.db),
-    elevenLabs: createElevenLabs(deps.config.elevenLabsApiKey, deps.fetch),
+    speech: createOpenRouterSpeech(deps.config.openRouterApiKey, deps.fetch),
     dataDir: deps.config.dataDir,
     now: deps.now,
   });

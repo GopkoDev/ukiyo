@@ -11,7 +11,6 @@ export const DEV_UI_PORT = 5173;
 const EnvSchema = z.object({
   OPENROUTER_API_KEY: z.string().optional(),
   AI_GATEWAY_API_KEY: z.string().optional(),
-  ELEVENLABS_API_KEY: z.string().optional(),
   GEN_IMG_DATA_DIR: z.string().min(1).default("./data"),
   PORT: z.coerce.number().int().positive().default(8787),
 });
@@ -19,7 +18,6 @@ const EnvSchema = z.object({
 export type Config = {
   openRouterApiKey: string | undefined;
   aiGatewayApiKey: string | undefined;
-  elevenLabsApiKey?: string;
   dataDir: string;
   port: number;
 };
@@ -31,7 +29,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return {
     openRouterApiKey: parsed.OPENROUTER_API_KEY || undefined,
     aiGatewayApiKey: parsed.AI_GATEWAY_API_KEY || undefined,
-    elevenLabsApiKey: parsed.ELEVENLABS_API_KEY || undefined,
     dataDir: resolve(parsed.GEN_IMG_DATA_DIR),
     port: parsed.PORT,
   };

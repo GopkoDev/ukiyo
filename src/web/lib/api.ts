@@ -3,8 +3,8 @@ import {
   AudioGeneration,
   AudioGenerationsResponse,
   CreditsResponse,
+  SpeechModelsResponse,
   type StartSpeechRequest,
-  VoicesResponse,
 } from "../../shared/audio";
 import { CommentResponse, TagsResponse } from "../../shared/curation";
 import { ErrorResponse } from "../../shared/errors";
@@ -115,7 +115,7 @@ export const api = {
     request(TagsResponse, `/generations/${encodeURIComponent(id)}/tags/${encodeURIComponent(tag)}`, json("DELETE")),
   deleteGeneration: (id: string) => request(z.null(), `/generations/${encodeURIComponent(id)}`, json("DELETE")),
   generation: (id: string) => request(Generation, `/generations/${encodeURIComponent(id)}`),
-  voices: () => request(VoicesResponse, "/audio/voices"),
+  speechModels: () => request(SpeechModelsResponse, "/audio/models"),
   audioCredits: () => request(CreditsResponse, "/audio/credits"),
   audioGenerations: () => request(AudioGenerationsResponse, "/audio"),
   generateSpeech: (body: StartSpeechRequest) => request(AudioGeneration, "/audio", json("POST", body)),

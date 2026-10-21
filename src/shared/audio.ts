@@ -9,47 +9,52 @@ export const VoiceSettings = z.object({
   speakerBoost: z.boolean().optional(),
 });
 export type VoiceSettings = z.infer<typeof VoiceSettings>;
-export type VoiceControl = keyof VoiceSettings;
+export const VoiceControl = z.enum(["speed", "stability", "similarity", "style", "speakerBoost"]);
+export type VoiceControl = z.infer<typeof VoiceControl>;
 
-export type SpeechModel = {
-  id: string;
-  name: string;
-  /** Characters per request the model accepts. */
-  maxChars: number;
-  /** The voice settings the model supports — an absent control is not sent. */
-  controls: readonly VoiceControl[];
-  /** Fixed stops for stability (Eleven v3 takes only Creative / Natural / Robust). */
-  stabilitySteps?: readonly number[];
-};
+/** What a model accepts — ElevenLabs model docs + OpenRouter's speech API (speed only on Multilingual v2 and Flash). */
+type ModelSpec = { maxChars: number; controls: readonly VoiceControl[]; stabilitySteps?: readonly number[] };
 
-/** ElevenLabs text-to-speech models (the only audio provider). */
-export const SPEECH_MODELS: readonly SpeechModel[] = [
-  {
-    id: "eleven_multilingual_v2",
-    name: "Eleven Multilingual v2",
+const V4: ModelSpec = { maxChars: 10_000, controls: ["stability", "similarity"] };
+const V3: ModelSpec = { maxChars: 5_000, controls: ["stability", "similarity", "style"], stabilitySteps: [0, 0.5, 1] };
+const FLASH = (maxChars: number): ModelSpec => ({
+  maxChars,
+  controls: ["speed", "stability", "similarity", "speakerBoost"],
+});
+const TURBO = (maxChars: number): ModelSpec => ({ maxChars, controls: ["stability", "similarity", "speakerBoost"] });
+
+/** ElevenLabs text-to-speech models on OpenRouter, in display order. A catalog model missing here gets `FALLBACK_SPEC`. */
+export const SPEECH_MODEL_SPECS: Readonly<Record<string, ModelSpec>> = {
+  "elevenlabs/eleven-v4": V4,
+  "elevenlabs/eleven-v4-turbo": V4,
+  "elevenlabs/eleven-v3": V3,
+  "elevenlabs/eleven-v3-conversational": V3,
+  "elevenlabs/eleven-multilingual-v2": {
     maxChars: 10_000,
     controls: ["speed", "stability", "similarity", "style", "speakerBoost"],
   },
-  {
-    id: "eleven_v3",
-    name: "Eleven v3",
-    maxChars: 5_000,
-    controls: ["stability"],
-    stabilitySteps: [0, 0.5, 1],
-  },
-  {
-    id: "eleven_flash_v2_5",
-    name: "Eleven Flash v2.5",
-    maxChars: 40_000,
-    controls: ["speed", "stability", "similarity", "speakerBoost"],
-  },
-  {
-    id: "eleven_turbo_v2_5",
-    name: "Eleven Turbo v2.5",
-    maxChars: 40_000,
-    controls: ["speed", "stability", "similarity", "speakerBoost"],
-  },
-];
+  "elevenlabs/eleven-flash-v2.5": FLASH(40_000),
+  "elevenlabs/eleven-flash-v2": FLASH(30_000),
+  "elevenlabs/eleven-turbo-v2.5": TURBO(40_000),
+  "elevenlabs/eleven-turbo-v2": TURBO(30_000),
+};
+export const FALLBACK_SPEC: ModelSpec = { maxChars: 5_000, controls: ["stability", "similarity"] };
+export const SPEECH_MODEL_PREFIX = "elevenlabs/";
+
+export const SpeechModel = z.object({
+  id: z.string(),
+  name: z.string(),
+  maxChars: z.number().int().positive(),
+  controls: z.array(VoiceControl),
+  stabilitySteps: z.array(z.number()).optional(),
+  /** USD per input character (OpenRouter passes ElevenLabs' price through); `null` = not published. */
+  pricePerChar: z.number().nonnegative().nullable(),
+  voices: z.array(z.string()),
+});
+export type SpeechModel = z.infer<typeof SpeechModel>;
+
+export const SpeechModelsResponse = z.object({ models: z.array(SpeechModel) });
+export type SpeechModelsResponse = z.infer<typeof SpeechModelsResponse>;
 
 export const DEFAULT_VOICE_SETTINGS: Required<VoiceSettings> = {
   speed: 1,
@@ -59,32 +64,21 @@ export const DEFAULT_VOICE_SETTINGS: Required<VoiceSettings> = {
   speakerBoost: true,
 };
 
-export const speechModel = (id: string) => SPEECH_MODELS.find((m) => m.id === id);
-
 /** Only the settings the model supports, defaults filled in. */
-export function settingsFor(model: SpeechModel, settings: VoiceSettings): VoiceSettings {
+export function settingsFor(model: Pick<SpeechModel, "controls">, settings: VoiceSettings): VoiceSettings {
   return Object.fromEntries(model.controls.map((k) => [k, settings[k] ?? DEFAULT_VOICE_SETTINGS[k]]));
 }
 
-export const Voice = z.object({
-  id: z.string(),
-  name: z.string(),
-  category: z.string().nullable(),
-  description: z.string().nullable(),
-});
-export type Voice = z.infer<typeof Voice>;
+/** Billed characters: Unicode code points, audio tags included. */
+export const billedChars = (text: string) => [...text].length;
 
-export const VoicesResponse = z.object({ voices: z.array(Voice) });
-export type VoicesResponse = z.infer<typeof VoicesResponse>;
-
-export const CreditsResponse = z.object({ used: z.number().int(), limit: z.number().int() }).nullable();
+export const CreditsResponse = z.object({ remainingUsd: z.number() }).nullable();
 export type CreditsResponse = z.infer<typeof CreditsResponse>;
 
 export const StartSpeechRequest = z.object({
   text: z.string().trim().min(1, { error: "Enter some text" }).max(40_000),
   model: z.string().min(1).max(100),
-  voiceId: z.string().min(1).max(100),
-  voiceName: z.string().min(1).max(200),
+  voice: z.string().min(1).max(100),
   settings: VoiceSettings.default({}),
 });
 export type StartSpeechRequest = z.input<typeof StartSpeechRequest>;
@@ -93,12 +87,13 @@ export const AudioGeneration = z.object({
   id: z.string(),
   createdAt: z.string(),
   model: z.string(),
-  voiceId: z.string(),
-  voiceName: z.string(),
+  voice: z.string(),
   text: z.string(),
   settings: VoiceSettings,
   mediaType: z.string(),
-  characters: z.number().int().nullable(),
+  characters: z.number().int(),
+  /** Characters × the catalog price at generation time, in micro-USD; `null` when no price was published. */
+  costMicros: z.number().int().nullable(),
   /** Where the browser fetches the audio. */
   url: z.string(),
 });
