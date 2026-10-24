@@ -193,7 +193,7 @@
         "src/web/features/audio/controls.test.tsx"
       ],
       "file": "docs/features/text-to-speech/tasks/speech-model-and-voice-controls.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T13",

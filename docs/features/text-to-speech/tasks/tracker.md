@@ -17,7 +17,7 @@
 | T9 | Expose the audio contract, wire it in createApp and retire the prototype server code | ports | pipeline agent | M | T8 | done | COMMIT |
 | T10 | Group the navigation into Image and Audio and move Speech under /audio | ui | pipeline agent | S | — | done | COMMIT |
 | T11 | Show speech prices, estimates and recording costs honestly | ui | pipeline agent | S | T2 | done | COMMIT |
-| T12 | Build ModelSelect, VoiceSelect and descriptor-driven VoiceControls | ui | pipeline agent | M | T2 | todo | — |
+| T12 | Build ModelSelect, VoiceSelect and descriptor-driven VoiceControls | ui | pipeline agent | M | T2 | done | COMMIT |
 | T13 | Rebuild the Speech page on the new contract | ui | pipeline agent | L | T9, T10, T11, T12 | todo | — |
 | T14 | List recent recordings with reuse, delete and live pending costs | ui | pipeline agent | M | T13 | todo | — |
 | T15 | Prove the audio NFRs and the image/audio separation | tests | pipeline agent | S | T9 | todo | — |
