@@ -1,11 +1,4 @@
 import { z } from "zod";
-import {
-  AudioGeneration,
-  AudioGenerationsResponse,
-  CreditsResponse,
-  SpeechModelsResponse,
-  type StartSpeechRequest,
-} from "../../shared/audio";
 import { CommentResponse, TagsResponse } from "../../shared/curation";
 import { ErrorResponse } from "../../shared/errors";
 import {
@@ -24,6 +17,13 @@ import { HealthResponse } from "../../shared/health";
 import { ModelPreference, PreferencesResponse, type SetPreferenceRequest } from "../../shared/models";
 import { CostHistory, PriceResponse } from "../../shared/pricing";
 import { ModelsResponse, ProvidersResponse } from "../../shared/providers";
+import {
+  CreditsResponse,
+  Recording,
+  RecordingPage,
+  SpeechModelsResponse,
+  type StartSpeechRequest,
+} from "../../shared/speech";
 
 export class ApiError extends Error {
   constructor(
@@ -116,8 +116,15 @@ export const api = {
   deleteGeneration: (id: string) => request(z.null(), `/generations/${encodeURIComponent(id)}`, json("DELETE")),
   generation: (id: string) => request(Generation, `/generations/${encodeURIComponent(id)}`),
   speechModels: () => request(SpeechModelsResponse, "/audio/models"),
-  audioCredits: () => request(CreditsResponse, "/audio/credits"),
-  audioGenerations: () => request(AudioGenerationsResponse, "/audio"),
-  generateSpeech: (body: StartSpeechRequest) => request(AudioGeneration, "/audio", json("POST", body)),
-  deleteAudio: (id: string) => request(z.null(), `/audio/${encodeURIComponent(id)}`, json("DELETE")),
+  speechCredits: () => request(CreditsResponse, "/audio/credits"),
+  recordings: (cursor?: string, limit?: number) => {
+    const q = new URLSearchParams();
+    if (cursor) q.set("cursor", cursor);
+    if (limit !== undefined) q.set("limit", String(limit));
+    const qs = q.toString();
+    return request(RecordingPage, `/audio/recordings${qs ? `?${qs}` : ""}`);
+  },
+  recording: (id: string) => request(Recording, `/audio/recordings/${encodeURIComponent(id)}`),
+  createRecording: (body: StartSpeechRequest) => request(Recording, "/audio/recordings", json("POST", body)),
+  deleteRecording: (id: string) => request(z.null(), `/audio/recordings/${encodeURIComponent(id)}`, json("DELETE")),
 };
