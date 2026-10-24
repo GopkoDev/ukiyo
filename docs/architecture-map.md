@@ -1,198 +1,189 @@
 ---
 status: current
-mode: greenfield-bootstrap   # current (brownfield scan) | greenfield-bootstrap (target foundation)
-updated_at: "2026-10-18"
-reflects_commit: "96e6530"
-# machine-readable keys — on greenfield they encode the DECIDED toolchain; "" = not decided.
-# implement's command-detection cascade reads test_cmd/lint_cmd right after the settings override.
+mode: current   # current (brownfield scan) | greenfield-bootstrap (target foundation)
+updated_at: "2026-10-25"
+reflects_commit: "cbb9c47"
+# machine-readable keys — implement's command-detection cascade reads test_cmd/lint_cmd right after the settings override.
 language: "typescript 5 / node 26"
 build_cmd: "pnpm build"
 test_cmd: "pnpm test"
 lint_cmd: "pnpm lint"
-migration_tool: "custom sql runner (scripts/migrate.ts — pnpm db:migrate / pnpm db:rollback)"
-frontend: "react 19 + vite + tailwind v4 + shadcn/ui"
+migration_tool: "custom sql runner (src/server/db/migrate.ts — applied on boot; pnpm db:migrate / pnpm db:rollback)"
+frontend: "react 19 + vite 8 + tailwind v4 + shadcn/ui"
 ---
 
 # Architecture map — Ukiyo
 
-> **Greenfield foundation** (`mode: greenfield-bootstrap`): this describes the **target baseline**
-> fixed by `survey` on 2026-10-18 — what `/sdd:scaffold` materializes and what every feature builds
-> into. Paths below marked *(target)* do not exist yet; scaffold creates them (task id in brackets).
-> Intent source: [`docs/idea-brief.md`](./idea-brief.md). Foundational decisions:
-> [ADR-0001](./adr/0001-use-typescript-node-hono-react-stack.md),
+> **Current map** (brownfield scan of `cbb9c47`, branch `feature/audio-generation`). It replaces the
+> greenfield foundation map of `96e6530`: the skeleton and roadmap steps 2–14 are built and merged
+> into `main`; two prototype commits (`a1169a1`, `cbb9c47`) add a text-to-speech page that does
+> **not** yet follow the conventions below (see §Constraints → *Audio prototype*).
+> Foundational decisions: [ADR-0001](./adr/0001-use-typescript-node-hono-react-stack.md),
 > [ADR-0002](./adr/0002-organize-as-modular-monolith-with-provider-port.md),
-> [ADR-0003](./adr/0003-store-metadata-in-sqlite-and-images-on-disk.md).
+> [ADR-0003](./adr/0003-store-metadata-in-sqlite-and-images-on-disk.md); feature ADRs 0004–0038 live in
+> `docs/features/<slug>/adr/`.
 
 **What it is:** a local-first web app for one user on one machine. A Node server bound to
 `127.0.0.1` calls OpenRouter and Vercel AI Gateway to generate images (text→img, img→img,
 img+text→img), stores every generation locally (image files + inputs + full metadata) and serves a
-browser UI with a gallery to inspect, comment, tag, delete, re-run (same or another model) and reuse
-an output as the next input. No auth, no sync, no multi-user. Native desktop wrapper: later, not v1.
+React gallery to inspect, comment, tag, delete, re-run and reuse outputs, filtered or grouped by
+model and by identical prompt. A prototype Speech page generates text-to-speech through OpenRouter.
+No auth, no sync, no multi-user.
 
 ## Stack
 
-- Language / runtime: TypeScript 5 (strict) on **Node 26** (current stable line; pinned via
-  `.nvmrc` + `package.json#engines`) — *(target)* [S1]
-- Package manager: **pnpm** (single package, no monorepo)
-- Server: **Hono** + `@hono/node-server`, listens on `127.0.0.1:8787` only
-- Frontend: **React 19 + Vite**, **Tailwind CSS v4**, **shadcn/ui** (Radix-based components copied
-  into the repo), **TanStack Query** for server state
-- Validation / shared types: **zod** schemas in `src/shared/` used by both server and web
-- Persistence: **SQLite** via `better-sqlite3` (hand-written SQL) + image files on the local
-  filesystem under `data/` — see ADR-0003
-- Provider HTTP: plain `fetch` (no vendor SDK) so raw request/response can be persisted
-- Build / test / lint:
-  - `pnpm dev` — server (`tsx watch`) + Vite dev server (`:5173`, proxies `/api` → `:8787`)
-  - `pnpm build` — `tsc --noEmit` + `vite build` (SPA into `dist/web/`)
-  - `pnpm start` — one process: API + built SPA on `127.0.0.1:8787`
-  - `pnpm test` — Vitest (unit + integration) · `pnpm typecheck` — `tsc --noEmit` (the "vet" gate)
-  - `pnpm lint` — Biome (lint + format check) · `pnpm format` — Biome write
-  - `pnpm db:migrate` / `pnpm db:rollback` — migration runner
-- CI: **none** (owner decision 2026-10-18) — the local gate is `pnpm typecheck && pnpm lint && pnpm test`.
+- Language / runtime: TypeScript ^5.9 (strict), ESM, Node ≥ 26 (`.nvmrc`, `package.json#engines`)
+- Package manager: pnpm (single package)
+- Server: Hono ^4.13 + `@hono/node-server` ^2.1, bound to `127.0.0.1:8787` (`src/server/lib/config.ts:6`)
+- Frontend: React ^19.3 + Vite ^8.3, Tailwind CSS ^4.3 (`@tailwindcss/vite`), shadcn/ui (radix-ui ^1.8),
+  lucide-react, TanStack Query ^5.104
+- Validation / shared types: zod ^4.6 schemas in `src/shared/`
+- Persistence: SQLite via better-sqlite3 ^13 (hand-written SQL, WAL) + files under the data dir
+- IDs: `ulid` ^3 (monotonic)
+- Provider HTTP: plain `fetch`, no vendor SDK
+- Build / test / lint: `pnpm build` (`tsc --noEmit` + `vite build`) · `pnpm test` (Vitest ^5: projects
+  `unit`, `integration`, `web`, `nfr`, `nfr-web`) · `pnpm typecheck` · `pnpm lint` (Biome ^2.5)
+- CI: none — the local gate is `pnpm typecheck && pnpm lint && pnpm test`.
 
 ## C4 — system as it is
 
-Target baseline (greenfield) — what the scaffold + v1 features produce.
-
 ```mermaid
 C4Container
-    title Target containers - Ukiyo
+    title Containers - Ukiyo as built
     Person(owner, "Owner", "Single local user")
-    System_Ext(openrouter, "OpenRouter", "Image generation API")
-    System_Ext(vercel, "Vercel AI Gateway", "Images API and chat modalities")
+    System_Ext(openrouter, "OpenRouter", "Images API, speech API, model catalog, credits")
+    System_Ext(vercel, "Vercel AI Gateway", "Images API, chat modalities, generation cost lookup")
     Container_Boundary(app, "Ukiyo on localhost") {
-        Container(web, "Web UI", "React 19, Vite, Tailwind, shadcn/ui", "Generate form and gallery")
-        Container(server, "API server", "Node 26, Hono", "Generations, providers, storage, migrations")
-        ContainerDb(db, "Metadata DB", "SQLite file", "Generations, inputs, tags, comments, cost")
-        ContainerDb(files, "Image store", "Local filesystem", "Output and input image files")
+        Container(web, "Web UI", "React 19, Vite, Tailwind, shadcn/ui", "Generate, Gallery, Speech, Models sections")
+        Container(server, "API server", "Node 26, Hono", "generations, providers, models, storage, audio, system")
+        ContainerDb(db, "Metadata DB", "SQLite file", "Generations, inputs, tags, comments, cost, preferences, audio rows")
+        ContainerDb(files, "File store", "Local filesystem", "Image outputs and inputs, audio files")
     }
     Rel(owner, web, "Uses", "Browser")
     Rel(web, server, "Calls", "JSON over HTTP /api")
     Rel(server, db, "Reads and writes", "better-sqlite3")
     Rel(server, files, "Reads and writes", "node fs")
-    Rel(server, openrouter, "Generates images", "HTTPS")
+    Rel(server, openrouter, "Generates images and speech", "HTTPS")
     Rel(server, vercel, "Generates images, fetches cost", "HTTPS")
 ```
 
 ## Module inventory
 
-Server modules live in `src/server/modules/<module>/`. "Status" = what exists after `/sdd:scaffold`.
-
 | Module | Path | Layers | Wired at | Responsibility | Status |
 |---|---|---|---|---|---|
-| system | `src/server/modules/system/` | routes | `src/server/app.ts` (`createApp`) | `GET /api/health` — baseline module & smoke-test target | scaffold [S1] |
-| generations | `src/server/modules/generations/` | domain / service / repo / routes | `src/server/app.ts` | create, list (newest first, optionally one provider + model or one prompt key), prompt groups, get, re-run, comment, tag, delete generations; per-model counts; parent→child lineage | planned (roadmap) |
-| providers | `src/server/modules/providers/` | port (`ImageProvider`) + adapters | `src/server/app.ts` (adapter registry) | OpenRouter `/api/v1/images`; Vercel `/v1/images/generations` + `/v1/images/edits`; Vercel chat `modalities`; async Vercel cost lookup | planned (roadmap) |
-| models | `src/server/modules/models/` | repo / routes | `src/server/app.ts` | the Owner's per-model preferences (favorite, hidden) per provider + model id; turning a flag on is checked against the provider catalog (ADR-0026, ADR-0029); read by the generate picker and the Models section (`src/web/features/models/`) | built (steps 9–10) |
-| storage | `src/server/modules/storage/` | infra | injected into services | write/read image files under `data/generations/<id>/` | planned (roadmap) |
-| db | `src/server/db/` | infra | `src/server/app.ts` | open SQLite, run pending migrations on boot | scaffold [S3] |
-| lib | `src/server/lib/` | shared | imported | `AppError` + error middleware, ULID ids, config (env via zod) | scaffold [S1] |
-| shared | `src/shared/` | contracts | imported by server + web | zod schemas / DTO types for the HTTP API | scaffold [S1] |
-| web | `src/web/` | app / features / components | `src/web/main.tsx` | SPA: generate form, gallery, detail view | scaffold [S1] (shell only) |
+| system | `src/server/modules/system/` | routes | `src/server/app.ts:49` | `GET /api/health` | built |
+| providers | `src/server/modules/providers/` | port (`port.ts`) + registry + adapters (`openrouter.ts`, `vercel.ts`) + `catalog.ts` + `prices.ts` + routes | `src/server/app.ts:52-58` | `ImageProvider` port (generate, optional `lookupCost`, optional `priceOf`); OpenRouter `/api/v1/images`; Vercel images + chat modalities + `GET /v1/generation?id=` cost lookup; cached model catalog; published prices | built (steps 2–4, 7) |
+| generations | `src/server/modules/generations/` | domain / service / repo / routes + `jobs.ts` (single-slot job) + `cost-sync.ts` + `promptKey.ts` | `src/server/app.ts:62-78` | start (async job, polled), list (cursor, by model, by prompt), prompt groups, get, re-run/reuse lineage, comment, tag, delete; background cost resolver (`pending → known/unavailable`) | built (steps 2–6, 11–14) |
+| models | `src/server/modules/models/` | repo / routes | `src/server/app.ts:60` | per-model preferences (favorite, hidden) per provider + model id | built (steps 9–10) |
+| storage | `src/server/modules/storage/` | infra (`file-store.ts`) | injected into generations service | staged image files `.staging/<id>/` → `generations/<id>/` by one synchronous rename inside the DB transaction; trash/restore/purge on delete; boot sweep | built |
+| audio | `src/server/modules/audio/` | routes + repo + own OpenRouter client (`openrouter-speech.ts`) | `src/server/app.ts:80-85` | **prototype**: ElevenLabs TTS via OpenRouter `POST /audio/speech`, catalog `GET /models?output_modalities=speech`, `GET /credits`; rows in `audio_generations`, files in `audio/<id>.mp3` | prototype (to be rebuilt — roadmap step 18) |
+| db | `src/server/db/` | infra (`client.ts`, `migrate.ts`) | `src/server/index.ts:10` | open SQLite (WAL); apply pending migrations on every boot | built |
+| lib | `src/server/lib/` | shared (`errors.ts`, `ids.ts`, `config.ts`, `request-guard.ts`) | imported | `AppError` + envelope, ULIDs, env via zod, Host/Origin/fetch-metadata guard (ADR-0007) | built |
+| shared | `src/shared/` | contracts | server + web | zod DTOs: `generations`, `providers`, `models`, `pricing`, `curation`, `rerun`, `model-groups`, `errors`, `health`, `image-sniff`, `audio` (prototype) | built |
+| web | `src/web/` | `features/{generate,gallery,models,audio}`, `components/ui`, `lib/{api,router,format,query-client}`, `sections.tsx` | `src/web/main.tsx` | SPA | built (audio = prototype) |
 
 ## Conventions (cited — the rules a new feature must match)
 
-All cited files are *(target)* — created by the scaffold task in brackets.
-
-- **Module wiring / registration:** each server module exports `register<Module>Routes(app, deps)`;
-  `createApp(deps)` in `src/server/app.ts` mounts them under `/api`. Dependencies (db, file store,
-  provider registry, clock) are passed in explicitly — no global singletons — so tests build an app
-  with fakes. — `src/server/app.ts` [S1]
-- **Error handling:** throw `AppError(code, message, status, details?)`; one Hono `onError` handler
-  renders `{ "error": { "code", "message", "details"? } }`. Upstream provider failures →
-  `code: "PROVIDER_ERROR"` with `details.provider`, `details.upstreamStatus`. Validation failures →
-  `VALIDATION_ERROR` (400). — `src/server/lib/errors.ts` [S1]
-- **IDs:** ULID strings generated in the app (time-sortable → gallery order "newest first" without
-  extra index). — `src/server/lib/ids.ts` [S1]
-- **Persistence / DB access:** hand-written SQL in a per-module `repo.ts` using `better-sqlite3`
-  prepared statements; every row read is parsed through a zod schema before leaving the repo. Images
-  never go in the DB — only relative paths under the data dir. Timestamps: ISO-8601 UTC text. Money:
-  integer **micro-USD** (`cost_micros`) + a status (`known | pending | unavailable`), because Vercel
-  cost arrives asynchronously. Data dir: `GEN_IMG_DATA_DIR`, default `./data` (gitignored). —
-  `src/server/db/client.ts` [S3]
-- **Migrations:** paired `migrations/NNNN_snake_name.up.sql` + `.down.sql` (4-digit sequence);
-  `scripts/migrate.ts` applies pending `up` files in a transaction and records them in
-  `schema_migrations`; `pnpm db:rollback` runs the latest `down`. The server applies pending
-  migrations on boot. This is the convention `data-model` detects and follows. —
-  `migrations/0001_init.up.sql` [S3]
-- **Config & secrets:** server-only env loaded from `.env.local` (gitignored) and validated with zod:
-  `OPENROUTER_API_KEY`, `AI_GATEWAY_API_KEY`, `GEN_IMG_DATA_DIR`, `PORT`. Keys are never sent to the
-  browser; the server binds `127.0.0.1` only. `.env.example` documents the keys. —
-  `src/server/lib/config.ts` [S1]
-- **Tests:** Vitest. Unit tests colocated as `*.test.ts`; integration tests as `*.int.test.ts` run
-  against a real SQLite file + temp data dir (no Docker needed) and call the app via
-  `app.request()`; provider HTTP is stubbed with recorded JSON fixtures in `tests/fixtures/`. Web
-  component tests use Testing Library + jsdom. — `src/server/app.int.test.ts` [S2]
-- **Lint / format / typecheck:** Biome (`biome.json`) for lint + format; `tsc --noEmit` in strict
-  mode is the "vet" gate. — `biome.json` [S1]
-- **Inter-module communication:** direct in-process function calls through injected services; no
-  events/queues in v1. The async Vercel cost lookup is an in-process deferred retry that updates
-  the generation row (`cost_status: pending → known|unavailable`).
-- **HTTP API shape:** JSON under `/api/*`, resource-oriented (`/api/generations`, `/api/generations/:id`),
-  request/response bodies defined once as zod schemas in `src/shared/`. Image bytes served from
-  `/api/files/<relative path>` (path-traversal guarded). — `src/shared/` [S1]
-- **UI / styling:** Tailwind v4 utility classes + shadcn/ui primitives in `src/web/components/ui/`;
-  feature UI composes them — no second component library, no CSS-in-JS. — `src/web/components/ui/` [S1]
+- **Module wiring / registration:** `createApp(deps)` (`src/server/app.ts:47`) builds every module by
+  hand from explicit deps (`config`, `db`, optional `fetch`, `now`, `timers`, timeouts — `app.ts:25-38`)
+  and mounts each `register<Module>Routes(api, deps)` under `/api` (`app.ts:90`). Boot side effects
+  run inside `createApp`: prompt-key backfill, file sweep, cost resume (`app.ts:75-77`).
+  `stopBackground()` cancels timers on shutdown (`src/server/index.ts:19-26`).
+- **Error handling:** `AppError(code, message, status, details?)` with a closed code union
+  (`src/server/lib/errors.ts:4-24`); one `onError` renders `{ error: { code, message, details? } }`.
+  Adapters throw `ProviderError(provider, upstreamStatus, message)` (`providers/port.ts:34`), mapped
+  to `PROVIDER_ERROR` with `details.provider` + `details.upstreamStatus`.
+- **IDs:** `newId(now)` monotonic ULID (`src/server/lib/ids.ts:6`); newest first = `ORDER BY id DESC`;
+  paging is a cursor by id.
+- **Persistence / DB access:** prepared statements in a per-module `repo.ts`; every row zod-parsed
+  (snake → camel) before leaving the repo — e.g. `src/server/modules/audio/repo.ts:5-31`.
+  Money: integer `cost_micros` + `cost_status` (`known | pending | unavailable`) with a CHECK tying
+  them (`migrations/0002_create_generations.up.sql:16`); deferred price via `cost_ref`
+  (`migrations/0005_add_generation_cost_ref.up.sql`). Timestamps ISO-8601 UTC text.
+- **Deferred cost:** `createCostSync` (`src/server/modules/generations/cost-sync.ts:39`) — bounded
+  backoff lookups (5 s doubling to 60 s, 8 attempts, 10-min deadline) through the adapter's optional
+  `lookupCost(costRef)` (`providers/port.ts:45,53`); resumes pending rows on boot; `forget(id)` on
+  delete (ADR-0013). Implementation: Vercel `lookupCost` (`providers/vercel.ts:149`).
+- **Files:** never in the DB — only relative paths; written through `storage/file-store.ts`
+  (stage → `commitSync` inside the DB transaction → boot sweep; ADR-0006, ADR-0014), paths resolved
+  with traversal guard (`file-store.ts` `resolveRecorded`).
+- **Migrations:** paired `migrations/NNNN_snake_name.up.sql` / `.down.sql`; runner
+  `src/server/db/migrate.ts:13-50` records `schema_migrations`; applied on boot. A shipped migration
+  is never edited — a change is a new pair.
+- **Config & secrets:** `.env.local` → zod (`src/server/lib/config.ts`): `OPENROUTER_API_KEY`,
+  `AI_GATEWAY_API_KEY`, `GEN_IMG_DATA_DIR` (default `./data`, `config.ts:14`), `PORT`. Keys never reach
+  the browser.
+- **Tests:** Vitest projects (`vitest.config.ts`): `unit` `*.test.ts`, `integration` `*.int.test.ts`
+  (real SQLite in a temp dir via `tests/helpers/test-app.ts` `createTestApp` + `app.request()`),
+  `web` `*.test.tsx` (jsdom, `tests/helpers/setup-dom.ts`), `nfr` / `nfr-web` (serial, last).
+  Provider HTTP stubbed by `tests/helpers/fake-fetch.ts` from `tests/fixtures/{openrouter,vercel}/`
+  (incl. `openrouter/speech-models.json`).
+- **Lint / typecheck:** Biome (`biome.json`); `tsc --noEmit` strict.
+- **Inter-module communication:** in-process calls through injected services; generations reach
+  providers only through the registry (`providers/registry.ts:17`), never branching on provider.
+- **HTTP API shape:** JSON under `/api/*`, resource-oriented; bodies are zod schemas in `src/shared/`
+  used by both the route and `src/web/lib/api.ts`. Image bytes from `/api/files/<relative path>`.
+- **UI / styling:** Tailwind v4 utilities + shadcn/ui primitives (`src/web/components/ui/`); no second
+  component library, no CSS-in-JS.
 
 ## Datastores
 
 | Store | Engine | Accessed via | Notes |
 |---|---|---|---|
-| Metadata DB | SQLite 3 (`<data dir>/gen-img.db`, WAL mode) | `better-sqlite3` in `*/repo.ts` | generations, input images, outputs, tags, comments, cost, raw request/response JSON; single writer (one local process) |
-| Image store | local filesystem (`<data dir>/generations/<ulid>/`) | `storage` module (`node:fs/promises`) | `output-N.<ext>`, `input-N.<ext>` copies; DB stores relative paths |
+| Metadata DB | SQLite (`<data dir>/gen-img.db`, WAL) | `*/repo.ts` (better-sqlite3) | migrations 0001–0011: `generations` (+ cost_ref, source lineage, prompt_key), `generation_images`, `generation_inputs`, `generation_comments`, `generation_tags`, `model_preferences`, `audio_generations` (prototype: no `cost_status`) |
+| File store | local fs under `<data dir>` | `storage/file-store.ts` (images); audio prototype writes `audio/<id>.<ext>` directly with `node:fs` | `generations/<id>/output-N.<ext>`, `input-N.<ext>`; `.staging/` for atomic commit/delete |
 
 ## Frontend / UI foundation
 
-- **Component library / design system:** shadcn/ui components generated into
-  `src/web/components/ui/` (Button, Input, Textarea, Card, Dialog, Badge, Select seeded by scaffold;
-  Sidebar, Sheet, Tooltip, DropdownMenu, Separator, Skeleton, Breadcrumb from the `sidebar-08` block);
-  run `/sdd:design-system` before the first UI feature to fix tokens + inventory.
-- **Design tokens:** CSS variables in `src/web/index.css` (shadcn theme vars, light + dark) consumed
-  by Tailwind v4 `@theme`. — `src/web/index.css` [S1]
-- **Styling approach:** Tailwind CSS v4 utilities only. — `src/web/index.css` [S1]
-- **Shared primitives:** see component library above. — `src/web/components/ui/` [S1]
-- **State / data-fetching:** TanStack Query; a typed `api` client in `src/web/lib/api.ts` built on
-  `fetch` + the `src/shared/` zod schemas. — `src/web/lib/api.ts` [S1]
-- **Routing / app frame:** a hand-written History API router (`src/web/lib/router.tsx`) and one
-  section registry (`src/web/sections.tsx`) drive the sidebar (shadcn block `sidebar-08`, inset:
-  `src/web/components/app-sidebar.tsx`), each section's page and address, the breadcrumb, the
-  document title and the not-found page; Generate stays mounted while other sections show.
-  — ADR-0022, ADR-0023 (`docs/features/app-shell/adr/`)
-- **Theme:** light / dark / system via `ThemeProvider` + `ModeToggle` (`src/web/components/`), `.dark`
-  on `<html>`, pre-paint script in `index.html`. — ADR-0024
-- **Closest UI precedent:** `src/web/features/gallery/` and `src/web/features/generate/` pages mounted
-  through `SECTIONS`; the frame is `src/web/App.tsx` + `src/web/components/app-sidebar.tsx`.
+- **Component library:** shadcn/ui in `src/web/components/ui/` — badge, breadcrumb, button, card,
+  dialog, dropdown-menu, input, label, popover, select, separator, sheet, sidebar, skeleton, slider,
+  switch, table, tabs, textarea, tooltip. App components: `components/app-sidebar.tsx`,
+  `NotFound.tsx`, `mode-toggle.tsx`, `theme-provider.tsx`. Canon + inventory: `docs/design-system.md`.
+- **Design tokens:** shadcn CSS variables light/dark in `src/web/index.css:5`, `@theme inline` at `:67`.
+- **Styling:** Tailwind v4 utilities only.
+- **State / data-fetching:** TanStack Query (`src/web/lib/query-client.ts`); typed client
+  `src/web/lib/api.ts` (`request(schema, path)` parses every answer with the shared zod schema;
+  `ApiError` carries the envelope code).
+- **Routing / app frame:** History API router `src/web/lib/router.tsx` (detail route
+  `/generations/:id`, everything else a page); one section registry `src/web/sections.tsx` drives the
+  sidebar (`app-sidebar.tsx`, one flat «Sections» group today), page, breadcrumb, title and
+  not-found (ADR-0022); Generate stays mounted (ADR-0023). Current sections: Generate `/`,
+  Gallery `/gallery`, Speech `/speech` (prototype), Models `/models`.
+- **Theme:** light/dark/system (ADR-0024).
+- **Closest UI precedents:** gallery grid + detail modal (`features/gallery/Gallery.tsx`,
+  `GenerationDialog.tsx`, `Tile.tsx`, `CardBadges.tsx`, `Notes.tsx`, `DeleteGeneration.tsx`); Models
+  table (`features/models/ModelsPage.tsx`); generate panel (`features/generate/GeneratePanel.tsx`).
 
 ## Where things live / closest precedents
 
-- A new server capability → `src/server/modules/<module>/` with `routes.ts` (+ `service.ts`,
-  `repo.ts`, `domain.ts` as needed), registered in `src/server/app.ts`, modelled on `system`.
-- A new provider / call path → a new adapter implementing `ImageProvider` in
-  `src/server/modules/providers/`, registered in the adapter registry; never branch on provider
-  inside `generations`.
-- A new table / column → a new `migrations/NNNN_*.up.sql` + `.down.sql` pair (via `/sdd:data-model`).
-- A new HTTP contract → zod schema in `src/shared/`, consumed by both route and web client.
-- A new screen / UI component → `src/web/features/<feature>/`, composed from `src/web/components/ui/`.
-- A new top-level section (Models, Folders) → one entry in `SECTIONS` (`src/web/sections.tsx`) + its
-  page under `src/web/features/<feature>/`; the navigation bar and the address follow (ADR-0022).
+- New server capability → `src/server/modules/<module>/` (`routes.ts` + `service.ts`, `repo.ts`,
+  `domain.ts`), wired in `createApp`. Precedent: `generations`.
+- New provider / call path → an adapter in `src/server/modules/providers/` behind a port; precedent
+  `ImageProvider` (`port.ts:47`) + `registry.ts`.
+- Deferred cost → reuse `createCostSync` + an adapter `lookupCost`.
+- New table/column → new `migrations/NNNN_*` pair via `/sdd:data-model`.
+- New HTTP contract → zod in `src/shared/`, used by route and `src/web/lib/api.ts`.
+- New section → one `SECTIONS` entry + page under `src/web/features/<feature>/`.
 
 ## Constraints & known tech-debt
 
-- **Local-only, single user:** server binds `127.0.0.1`; no auth by design — exposing it on a
-  network interface would expose the API keys' spending power.
-- **Both providers from v1** (idea brief §5): ≥3 call paths with model-dependent support for input
-  images, `seed`, `size`/`aspect_ratio`, `n`; the `ImageProvider` port must carry "what the model
-  accepted" back into metadata.
-- **Vercel cost is asynchronous** (`GET /v1/generation?id=`, may 404 for seconds; excludes BYOK
-  request cost) → `cost_status: pending` is a first-class state.
-- **"Reproduce" = resend the same inputs**, not pixel identity (idea brief §5/§7).
-- **Native modules:** `better-sqlite3` needs a prebuilt binary for Node 26 (falls back to a local
-  compile via node-gyp if missing).
-- **No CI** — quality gate runs locally only.
-- Provider endpoints/model names drift fast; facts in the idea brief are as of 2026-10-18.
+- **Local-only, single user:** `127.0.0.1` only; no auth; request guard (ADR-0007).
+- **Provider drift:** model ids, prices and parameters change fast; catalogs are fetched live and cached.
+- **Vercel cost is asynchronous** → `pending` is a first-class cost state.
+- **Audio prototype (commits `a1169a1`, `cbb9c47`)** — works end to end (the owner's DB holds 19 real
+  rows + files, migration 0011 is applied there, so 0011 is treated as shipped), but violates the
+  conventions: (1) its OpenRouter client lives inside `modules/audio/`, not as a providers adapter
+  behind a port; (2) `audio_generations` has `cost_micros` without `cost_status`, and `cost_ref` is
+  stored but never reconciled; (3) files are written with `node:fs` directly, bypassing
+  `storage/file-store.ts` (no staged atomic commit, delete is row-then-file); (4) no service/domain
+  layer — validation, billing and storage live in `routes.ts`; (5) model-catalog cache and the 180 s
+  timeout are hard-coded in the module; (6) list is `LIMIT 100`, no cursor; (7) ElevenLabs only
+  (`SPEECH_MODEL_PREFIX`), mp3 only; (8) no unit test for the client, no web tests; SpeechPage is one
+  461-line file. Rebuilt by roadmap step 18 `text-to-speech`.
+- **Native module:** better-sqlite3 prebuilt for Node 26.
+- **No CI.**
 
 ## Reconciliation with the authored architecture doc
 
-No authored architecture doc; this map is the current reference. Inputs reconciled:
-`docs/idea-brief.md` (intent, scope, provider facts, open questions — the API-key storage question
-is answered here by `.env.local`, server-only).
+No authored architecture doc besides root `CLAUDE.md`, which this map agrees with (stack, layout,
+conventions, hard rules). The previous greenfield map's *(target)* paths all exist now.
