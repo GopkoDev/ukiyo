@@ -61,7 +61,7 @@
       "dod": "unit tests prove a valid 44-byte RIFF/WAVE header for the given rate/channels, the default 24 000 Hz mono, unchanged samples, and a thrown conversion error for odd-length or empty data",
       "files_hint": ["src/server/modules/audio/wav.ts", "src/server/modules/audio/wav.test.ts"],
       "file": "docs/features/text-to-speech/tasks/pcm-to-wav.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T5",
