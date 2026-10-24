@@ -20,7 +20,7 @@ The trigger is the owner's audio epic (roadmap steps 18–21): this step lays th
 Committed approach: the navigation becomes two groups — **Image** first (Generate, Gallery, Models, unchanged) and **Audio** second (Speech now; the audio gallery and voices join in steps 19 and 21). The Speech page keeps the prototype's layout: text on the left, voice, model and voice controls on the right, the latest result with a player, and the recent recordings. Behind it, the page is rebuilt on the project's conventions. It offers every speech model in OpenRouter's catalog. Each model shows only the controls it accepts: known model families get their own controls, and any other model still works with a voice and the text. Before the Owner generates, the page shows a price estimate from the published price. Each saved recording has a cost status: pending while Ukiyo asks the provider what it actually charged, then known, or unavailable if the provider never says. The up-front estimate stays visible beside the cost, always labelled as an estimate. The prototype's recordings are kept as they are.
 
 - Failure modes weighed before the AC (devil's-advocate pass, §1 ¶4 summary): a model whose voices, formats or controls the page gets wrong; audio the browser can't play; an estimate that reads as the real price or as free; a lost recording after a crash or a failed save; prototype recordings losing their cost or file; image features changing by accident. Each one has an AC or an NFR row.
-- Decision (owner, 2026-10-25): images and audio stay separate — separate records, separate sections — and audio reuses the image side's saving, cost lookup and page building blocks rather than merging both into one «media» record. The Speech page moves under the Audio group's address space; its former address keeps working.
+- Decision (owner, 2026-10-25): images and audio stay separate — separate records, separate sections — and audio reuses the image side's saving, cost lookup and page building blocks rather than merging both into one «media» record. The Speech page moves under the Audio group's address space (`/audio/speech`; steps 19 and 21 add siblings under `/audio/`). Its former address `/speech` redirects there, so the address bar shows the new one.
 - Decision (owner, 2026-10-25): the prototype's stored data is kept. Recordings that have an amount become cost `known`; recordings without one become `unavailable`.
 - Decision override: prototype recordings with an amount become cost `known` although the amount was computed from the published price, not reported by the provider — rationale: owner decision 2026-10-25; per-character prices are the billing formula. The prototype did store the provider's reference, but by owner decision its rows are not looked up again — their amount is final.
 - Decision (assumed, see §8): a recording keeps its up-front price estimate beside its cost. This differs from image generations, where the estimate is never stored. The reason is that a speech price is almost always per character, so the estimate is the best figure the Owner has until (or unless) the provider reports the real cost.
@@ -90,7 +90,7 @@ Committed approach: the navigation becomes two groups — **Image** first (Gener
 
 **Given** the Owner has an unsent prompt on the Generate page, or text and settings on the Speech page
 **When** the Owner moves to another section and comes back
-**Then** the prompt, or the text and settings, are still there (app-shell keeps the Generate page as it is). A recording that finished while the Owner was away shows in the Speech page's recent recordings.
+**Then** the prompt, or the text and settings, are still there (app-shell keeps the Generate page as it is). A recording that is still being generated keeps showing as in progress, with the generate action unavailable. One that finished while the Owner was away shows as the latest result and first in the recent recordings. One that failed shows its error.
 
 ### AC-03 (US-02) — happy path
 
@@ -100,7 +100,7 @@ Committed approach: the navigation becomes two groups — **Image** first (Gener
 
 ### AC-04 (US-02) — error
 
-**Given** the text is empty, or longer than the chosen model's character limit
+**Given** the text is empty or only spaces and line breaks, or longer than the chosen model's character limit
 **When** the Owner tries to generate
 **Then** the generate action is unavailable, and the character counter shows the limit in a warning colour («5 210 / 5 000 characters»). Nothing is sent to the provider and nothing is charged. If such a request still reaches Ukiyo, it is refused with the reason, for example «Eleven v3 takes at most 5 000 characters».
 
@@ -120,37 +120,37 @@ Committed approach: the navigation becomes two groups — **Image** first (Gener
 
 **Given** the Owner chooses a model
 **When** the controls are shown
-**Then** only the controls that model accepts appear, each with its own range and default. For example: ElevenLabs models show stability, similarity and, where the model supports them, style, speaker boost and speed; models that take delivery instructions show a free-text «delivery instructions» field; models that honour speed show a speed control. The voice list is that model's own voices. Each model's price and character limit are shown next to it in the model list.
+**Then** only the controls that model accepts appear, each with its own range and default. For example: ElevenLabs models show stability, similarity and, where the model supports them, style, speaker boost and speed; models that take delivery instructions show a free-text «delivery instructions» field; models that honour speed show a speed control. The voice list is that model's own voices. Each model's price and character limit are shown next to it in the model list. The list is grouped by the model's maker, ElevenLabs first and the others in alphabetical order, with each group in catalog order. When a model offers more than 20 voices, the voice list can be filtered by typing. Delivery instructions take up to 1 000 characters, and they are not billed characters.
 
 ### AC-08 (US-03) — domain invariant
 
 **Given** the Owner changes a control and then switches to a model that doesn't accept it
 **When** the Owner generates
-**Then** only the new model's accepted settings are sent and recorded, and a setting the model ignores is never shown as applied. The text is kept. The voice is kept if the new model offers it; otherwise the model's first listed voice is selected, or «provider default» when it lists none. «Reset values» restores the current model's defaults.
+**Then** only the new model's accepted settings are sent and recorded, and a setting the model ignores is never shown as applied. The text is kept. The voice is kept if the new model offers it; otherwise the model's first listed voice is selected, or «provider default» when it lists none. A control that both models accept keeps its value, brought into the new model's range when it is outside it. Ukiyo does not remember separate values per model. «Reset values» restores the current model's defaults for the voice controls and the delivery instructions, and leaves the voice and the text as they are.
 
 ### AC-09 (US-03) — domain invariant
 
 **Given** a catalog model Ukiyo has no specific knowledge of, or a model whose catalog entry lists no voices
 **When** the Owner chooses it
-**Then** it stays usable. An unknown model offers the voice and the text only. A model without listed voices lets the Owner either use the provider's default voice or type a voice name, and the recording names the voice that was asked for («provider default» when none was). A model's character limit comes from what Ukiyo knows about its family or from the catalog. When neither gives one, a default of 5 000 characters applies, labelled «limit not published». Text over the limit is refused before sending and never cut short. Ukiyo never hides a catalog model because it doesn't know its controls.
+**Then** it stays usable. An unknown model offers the voice and the text only. A model without listed voices lets the Owner either use the provider's default voice or type a voice name, and the recording names the voice that was asked for («provider default» when none was). A model's character limit comes from what Ukiyo knows about its family. Otherwise it comes from the limit the catalog states for it. When neither gives one, a default of 5 000 characters applies, labelled «limit not published». Text over the limit is refused before sending and never cut short. Ukiyo never hides a catalog model because it doesn't know its controls.
 
 ### AC-10 (US-02) — domain invariant
 
 **Given** a model that returns audio in a raw form a browser can't play directly
 **When** its recording is saved
-**Then** the saved file plays in the page's player and downloads as a common audio file. A recording is saved only together with its audio file — never a recording without audio, never an audio file without its recording — even if Ukiyo stops in the middle of saving.
+**Then** the saved file plays in the page's player and downloads as a common audio file. Raw audio is wrapped, without loss, as a WAV file; audio that arrives as MP3 is kept as it came. The Owner never chooses an output format, and the recording names its file type. A recording is saved only together with its audio file — never a recording without audio, never an audio file without its recording — even if Ukiyo stops in the middle of saving.
 
 ### AC-11 (US-04) — happy path
 
 **Given** the chosen model has a published price per character
 **When** the Owner types
-**Then** next to the generate action, the page shows an estimate labelled as an estimate («≈ $0.0012»), computed from the billed characters × the published price. Billed characters are every character of the text as it is sent, inline delivery tags included (one per letter, emoji or symbol, whatever its encoding). It updates as the text changes. A model priced at zero shows «Free».
+**Then** next to the generate action, the page shows an estimate labelled as an estimate («≈ $0.0012»), computed from the billed characters × the published price. Billed characters are the text's Unicode code points after removing spaces and line breaks at its start and end, which is the text as it is sent. Inline delivery tags are included. An emoji built from several code points counts as several, as the providers bill it. The counter, the refusal (AC-04), the estimate and the recorded count all use this one rule. Amounts show two significant digits («≈ $0.0012», «≈ $0.72»). A non-zero amount below $0.0001 shows as «< $0.0001», never as $0. The same rule applies to recorded costs. It updates as the text changes. A model priced at zero shows «Free».
 
 ### AC-12 (US-04) — domain invariant
 
 **Given** the chosen model has no published price, or is priced by something other than characters (for example per second of audio, or per token)
 **When** the Owner types
-**Then** the page says how the model is priced, or that its price is unknown, instead of a number — never «$0» and never «Free» for an unknown price.
+**Then** the page says how the model is priced («priced per second of audio», «priced per token»), or that its price is unknown, instead of a number — never «$0» and never «Free» for an unknown price. Unlike image models, speech models get no estimate from the Owner's past costs in this step, so such a recording has no estimate.
 
 ### AC-13 (US-04) — domain invariant
 
@@ -168,7 +168,7 @@ Committed approach: the navigation becomes two groups — **Image** first (Gener
 
 **Given** the Owner has made recordings
 **When** the Owner opens the Speech page's recent recordings
-**Then** the ten latest are listed, newest first, each with a player, its text excerpt, voice, model, time, cost (with its status) and a download action. Choosing one puts its text, model, voice and settings back into the form, so the Owner can generate again. A recording whose model is no longer offered still shows its model's name and plays. Choosing it says that the model is no longer offered, and keeps the current model.
+**Then** the ten latest are listed, newest first, each with a player, its text excerpt, voice, model, time, cost (with its status) and a download action. Choosing one puts its text, model, voice and settings back into the form, so the Owner can generate again. If the form holds unsent text that differs from the recording's, the page asks before replacing it. A recording whose model is no longer offered still shows its model's name and plays. Choosing it says that the model is no longer offered and keeps the current model. It still fills in the text, plus the voice and the settings that the current model accepts.
 
 ### AC-16 (US-05) — domain invariant
 
@@ -180,7 +180,7 @@ Committed approach: the navigation becomes two groups — **Image** first (Gener
 
 **Given** a recording is being generated
 **When** the Owner tries to generate again
-**Then** the generate action is unavailable until the current request ends. One Owner action never sends two paid requests.
+**Then** the generate action is unavailable until the current request ends, also after moving to another section and back (AC-02). One Owner action never sends two paid requests. A second browser tab, or a reload of the page during a request, is not guarded. After a reload, a recording that finished still appears in the recent recordings.
 
 ### AC-18 (US-06) — happy path
 
@@ -193,6 +193,12 @@ Committed approach: the navigation becomes two groups — **Image** first (Gener
 **Given** Ukiyo is running
 **When** a page from another site in the Owner's browser asks Ukiyo to generate speech, list recordings or delete one
 **Then** Ukiyo refuses, as it does every other request from another site. The OpenRouter key never reaches the browser, the saved recording or the logs.
+
+### AC-20 (US-02) — error
+
+**Given** the provider answered with audio, but Ukiyo can't save it (for example the disk is full, or raw audio can't be converted)
+**When** the Owner generates
+**Then** the page says that the audio arrived but couldn't be saved, and that the provider may still charge for it. Nothing partial is left behind: no recording without its file and no stray file. The text and settings stay as the Owner set them.
 
 ## 6. Non-functional requirements
 
