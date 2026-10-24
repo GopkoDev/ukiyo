@@ -32,7 +32,7 @@
         "src/shared/speech.test.ts"
       ],
       "file": "docs/features/text-to-speech/tasks/speech-model-spec-and-dtos.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T3",
