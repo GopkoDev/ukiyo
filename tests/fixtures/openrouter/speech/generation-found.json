@@ -1,0 +1,14 @@
+{
+  "data": {
+    "id": "gen-tts-1792596888-MMkupXyNUqJTvlKLofio",
+    "upstream_id": "tts-upstream-1",
+    "total_cost": 0.00016,
+    "usage": 0.00016,
+    "upstream_inference_cost": null,
+    "created_at": "2026-10-25T10:00:01.000Z",
+    "model": "elevenlabs/eleven-v3",
+    "api_type": "tts",
+    "provider_name": "ElevenLabs",
+    "is_byok": false
+  }
+}

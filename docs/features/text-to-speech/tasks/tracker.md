@@ -8,7 +8,7 @@
 |---|---|---|---|---|---|---|---|
 | T1 | Promote migration 0012 and keep the prototype insert valid | migration | pipeline agent | S | — | done | COMMIT |
 | T2 | Add the speech family spec map and the shared speech DTOs | domain | pipeline agent | M | — | done | COMMIT |
-| T3 | Build the SpeechProvider port and the OpenRouter speech adapter | infra | pipeline agent | M | T2 | todo | — |
+| T3 | Build the SpeechProvider port and the OpenRouter speech adapter | infra | pipeline agent | M | T2 | done | COMMIT |
 | T4 | Wrap raw PCM as a WAV file | domain | pipeline agent | S | — | todo | — |
 | T5 | Give the file store single-file audio staging, trash and one combined boot sweep | infra | pipeline agent | M | — | todo | — |
 | T6 | Generalise cost sync over an injected repo and lookup | app | pipeline agent | S | — | todo | — |
