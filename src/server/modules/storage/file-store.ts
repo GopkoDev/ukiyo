@@ -125,6 +125,11 @@ export function createFileStore(dataDir: string) {
       rmSync(audioFinal(relPath), { force: true });
     },
 
+    /** Removes only the staged copy — a committed file with the same path may belong to another recording. */
+    discardStagedAudio(relPath: string): void {
+      rmSync(audioStaged(relPath), { force: true });
+    },
+
     /** Deletion's file step: moves the file into staging as `<name>.deleted`, synchronously, inside the transaction. */
     trashAudioSync(relPath: string): void {
       const source = audioFinal(relPath);
