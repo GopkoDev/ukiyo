@@ -61,7 +61,12 @@ export function createApp(deps: AppDeps, options: CreateAppOptions = {}) {
 
   const files = createFileStore(deps.config.dataDir);
   const repo = createGenerationsRepo(deps.db);
-  const costSync = createCostSync({ repo, providers, now: deps.now, timers: deps.timers });
+  const costSync = createCostSync({
+    repo,
+    lookupFor: (provider) => providers.get(provider)?.lookupCost,
+    now: deps.now,
+    timers: deps.timers,
+  });
   const service = createGenerationsService({
     providers,
     catalog,

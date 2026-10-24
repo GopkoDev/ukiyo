@@ -91,7 +91,7 @@
         "src/server/app.ts"
       ],
       "file": "docs/features/text-to-speech/tasks/generalise-cost-sync.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T7",
