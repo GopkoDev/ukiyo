@@ -16,7 +16,7 @@
         "src/server/modules/audio/migration.int.test.ts"
       ],
       "file": "docs/features/text-to-speech/tasks/promote-migration-0012.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T2",

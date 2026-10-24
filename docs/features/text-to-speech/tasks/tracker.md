@@ -6,7 +6,7 @@
 
 | # | Task | Layer | Owner | Estimate | Blocked by | Status | Step |
 |---|---|---|---|---|---|---|---|
-| T1 | Promote migration 0012 and keep the prototype insert valid | migration | pipeline agent | S | — | todo | — |
+| T1 | Promote migration 0012 and keep the prototype insert valid | migration | pipeline agent | S | — | done | COMMIT |
 | T2 | Add the speech family spec map and the shared speech DTOs | domain | pipeline agent | M | — | todo | — |
 | T3 | Build the SpeechProvider port and the OpenRouter speech adapter | infra | pipeline agent | M | T2 | todo | — |
 | T4 | Wrap raw PCM as a WAV file | domain | pipeline agent | S | — | todo | — |

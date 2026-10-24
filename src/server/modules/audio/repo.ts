@@ -7,7 +7,10 @@ const Row = z
     id: z.string(),
     created_at: z.string(),
     model: z.string(),
-    voice: z.string(),
+    voice: z
+      .string()
+      .nullable()
+      .transform((v) => v ?? "default"),
     text: z.string(),
     settings: z.string(),
     file_path: z.string(),
@@ -35,8 +38,8 @@ export type AudioRecord = z.output<typeof Row>;
 export function createAudioRepo(db: Db) {
   const insertStmt = db.prepare(
     `INSERT INTO audio_generations
-       (id, created_at, model, voice, text, settings, file_path, media_type, characters, cost_micros, cost_ref)
-     VALUES (@id, @createdAt, @model, @voice, @text, @settings, @filePath, @mediaType, @characters, @costMicros, @costRef)`,
+       (provider, id, created_at, model, voice, text, settings, file_path, media_type, characters, cost_micros, cost_status, cost_ref)
+     VALUES ('openrouter', @id, @createdAt, @model, @voice, @text, @settings, @filePath, @mediaType, @characters, @costMicros, @costStatus, @costRef)`,
   );
   const listStmt = db.prepare("SELECT * FROM audio_generations ORDER BY id DESC LIMIT ?");
   const getStmt = db.prepare("SELECT * FROM audio_generations WHERE id = ?");
@@ -44,7 +47,11 @@ export function createAudioRepo(db: Db) {
 
   return {
     insert(record: AudioRecord): void {
-      insertStmt.run({ ...record, settings: JSON.stringify(record.settings) });
+      insertStmt.run({
+        ...record,
+        settings: JSON.stringify(record.settings),
+        costStatus: record.costMicros === null ? "unavailable" : "known",
+      });
     },
     list(limit: number): AudioRecord[] {
       return listStmt.all(limit).map((r) => Row.parse(r));
