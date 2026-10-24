@@ -11,15 +11,13 @@ import { ApiError, api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { Recording, SpeechModel } from "../../../shared/speech";
 import { limitText, ModelSelect } from "./ModelSelect";
+import { SPEECH_CREDITS_KEY as CREDITS_KEY, SPEECH_MODELS_KEY as MODELS_KEY, RECORDINGS_KEY } from "./queryKeys";
+import { RecentRecordings } from "./RecentRecordings";
 import { SpeechResult } from "./SpeechResult";
 import { estimateText } from "./speechCost";
 import { type Draft, useSpeechDraft } from "./useSpeechDraft";
 import { VoiceControls } from "./VoiceControls";
 import { VoiceSelect } from "./VoiceSelect";
-
-export const RECORDINGS_KEY = ["recordings"] as const;
-const MODELS_KEY = ["speech-models"] as const;
-const CREDITS_KEY = ["speech-credits"] as const;
 
 const group = (n: number) => n.toLocaleString("en-US").replace(/,/g, " ");
 const NOT_CONFIGURED = "Speech needs OpenRouter — set OPENROUTER_API_KEY in .env.local and restart the server.";
@@ -123,6 +121,7 @@ export function SpeechPage() {
     <Tabs defaultValue="settings" className="gap-4">
       <TabsList className="w-full">
         <TabsTrigger value="settings">Settings</TabsTrigger>
+        <TabsTrigger value="recent">Recent</TabsTrigger>
       </TabsList>
       <TabsContent value="settings">
         <SettingsTab
@@ -130,6 +129,15 @@ export function SpeechPage() {
           models={models.data?.models}
           modelsError={models.isError ? errorText(models.error) : null}
           onRetry={() => models.refetch()}
+        />
+      </TabsContent>
+      <TabsContent value="recent">
+        <RecentRecordings
+          draftText={draft.text}
+          onReuse={(r) => {
+            draft.reuse(r);
+            setResult({ recording: r, fresh: false });
+          }}
         />
       </TabsContent>
     </Tabs>

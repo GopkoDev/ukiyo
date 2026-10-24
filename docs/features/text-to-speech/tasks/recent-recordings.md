@@ -9,8 +9,8 @@ files_hint: ["src/web/features/audio/RecentRecordings.tsx", "src/web/features/au
 owner: "pipeline agent (implement)"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Self-contained task (sdd:tasks). Work from what is inlined here; if a slice is insufficient, ambiguous or contradicts the code, open the named file and follow it. Do not invent the missing part. -->

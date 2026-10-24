@@ -238,3 +238,44 @@ describe("Speech page — across sections (AC-02, AC-17)", () => {
     expect(m.createRecording).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("Speech page — recent recordings (SCR-04, AC-15, AC-18)", () => {
+  const openRecent = () => fireEvent.mouseDown(screen.getByRole("tab", { name: "Recent" }));
+
+  it("puts a recording back into the form so the Owner can generate again", async () => {
+    m.recordings.mockResolvedValue({
+      items: [recording({ text: "Reuse me", voice: "sarah", settings: { stability: 1, similarity: 0.6, style: 0.2 } })],
+      nextCursor: null,
+    });
+    await ready();
+    openRecent();
+    fireEvent.click(await screen.findByRole("button", { name: /Reuse me/ }));
+    expect(text()).toHaveValue("Reuse me");
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Settings" }));
+    expect(await screen.findByRole("button", { name: "Voice" })).toHaveTextContent("Sarah");
+    expect(screen.getByRole("slider", { name: "Stability" })).toHaveAttribute("aria-valuetext", "Robust");
+  });
+
+  it("keeps the current model when the recording's model is no longer offered, and lists prototype recordings", async () => {
+    m.recordings.mockResolvedValue({
+      items: [
+        recording({
+          model: "elevenlabs/eleven-v1",
+          modelName: "Eleven v1",
+          text: "Old one",
+          costStatus: "known",
+          costMicros: 160,
+        }),
+      ],
+      nextCursor: null,
+    });
+    await ready();
+    openRecent();
+    expect(await screen.findByText("$0.00016")).toBeVisible();
+    fireEvent.click(await screen.findByRole("button", { name: /Old one/ }));
+    expect(await screen.findByText("Eleven v1 is no longer offered — kept Eleven v3")).toBeVisible();
+    expect(text()).toHaveValue("Old one");
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Settings" }));
+    expect(await screen.findByRole("button", { name: "Model" })).toHaveTextContent("Eleven v3");
+  });
+});
