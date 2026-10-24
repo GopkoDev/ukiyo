@@ -177,7 +177,7 @@
         "src/web/features/audio/speechCost.test.ts"
       ],
       "file": "docs/features/text-to-speech/tasks/speech-cost-display.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T12",

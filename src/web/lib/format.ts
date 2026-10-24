@@ -13,6 +13,17 @@ export function formatCostBadge(micros: number | null, status: CostStatus): stri
   return status === "known" && micros !== null ? formatCost(micros, status) : `cost ${status}`;
 }
 
+/**
+ * USD with two significant digits («$0.0012», «$0.041», «$0.72»; two decimals from $1) — speech prices and costs
+ * (text-to-speech spec AC-11). A non-zero amount below $0.0001 is «< $0.0001», never «$0».
+ */
+export function formatUsdSig(usd: number): string {
+  if (usd > 0 && usd < 0.0001) return "< $0.0001";
+  if (usd >= 1) return `$${usd.toFixed(2)}`;
+  const [whole, frac = ""] = String(Number(usd.toPrecision(2))).split(".");
+  return `$${whole}.${frac.padEnd(2, "0")}`;
+}
+
 /** `1024×1024` (× = U+00D7). */
 export function formatSize(width: number, height: number): string {
   return `${width}\u00d7${height}`;
