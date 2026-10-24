@@ -6,9 +6,7 @@
       "title": "Promote migration 0012 and keep the prototype insert valid",
       "layer": "migration",
       "deps": [],
-      "acs": [
-        "AC-18"
-      ],
+      "acs": ["AC-18"],
       "dod": "0012 applies and reverts on a prototype-shaped DB keeping every row (amount → known, none → unavailable) and the full gate is green",
       "files_hint": [
         "migrations/",
@@ -25,13 +23,7 @@
       "title": "Add the speech family spec map and the shared speech DTOs",
       "layer": "domain",
       "deps": [],
-      "acs": [
-        "AC-07",
-        "AC-08",
-        "AC-09",
-        "AC-11",
-        "AC-12"
-      ],
+      "acs": ["AC-07", "AC-08", "AC-09", "AC-11", "AC-12"],
       "dod": "unit tests prove family matching, control descriptors, settingsFor clamping, limit precedence, pricing unit, billedChars and the estimate",
       "files_hint": [
         "src/shared/speech-models.ts",
@@ -46,16 +38,8 @@
       "id": "T3",
       "title": "Build the SpeechProvider port and the OpenRouter speech adapter",
       "layer": "infra",
-      "deps": [
-        "T2"
-      ],
-      "acs": [
-        "AC-05",
-        "AC-07",
-        "AC-09",
-        "AC-10",
-        "AC-13"
-      ],
+      "deps": ["T2"],
+      "acs": ["AC-05", "AC-07", "AC-09", "AC-10", "AC-13"],
       "dod": "adapter unit tests over recorded fixtures prove the catalog mapping for all 36 models, per-family request bodies, PCM vs mp3 request, credits, cost lookup and error mapping; the catalog caches 10 min",
       "files_hint": [
         "src/server/modules/providers/speech-port.ts",
@@ -73,15 +57,9 @@
       "title": "Wrap raw PCM as a WAV file",
       "layer": "domain",
       "deps": [],
-      "acs": [
-        "AC-10",
-        "AC-20"
-      ],
+      "acs": ["AC-10", "AC-20"],
       "dod": "unit tests prove a valid 44-byte RIFF/WAVE header for the given rate/channels, the default 24 000 Hz mono, unchanged samples, and a thrown conversion error for odd-length or empty data",
-      "files_hint": [
-        "src/server/modules/audio/wav.ts",
-        "src/server/modules/audio/wav.test.ts"
-      ],
+      "files_hint": ["src/server/modules/audio/wav.ts", "src/server/modules/audio/wav.test.ts"],
       "file": "docs/features/text-to-speech/tasks/pcm-to-wav.md",
       "status": "todo"
     },
@@ -90,11 +68,7 @@
       "title": "Give the file store single-file audio staging, trash and one combined boot sweep",
       "layer": "infra",
       "deps": [],
-      "acs": [
-        "AC-10",
-        "AC-16",
-        "AC-20"
-      ],
+      "acs": ["AC-10", "AC-16", "AC-20"],
       "dod": "file-store tests prove stage→commit, discard, trash→restore, trash→purge for audio and that one sweep restores interrupted image and audio deletions before wiping staging and drops orphan audio files; image tests unchanged and green",
       "files_hint": [
         "src/server/modules/storage/file-store.ts",
@@ -109,9 +83,7 @@
       "title": "Generalise cost sync over an injected repo and lookup",
       "layer": "app",
       "deps": [],
-      "acs": [
-        "AC-13"
-      ],
+      "acs": ["AC-13"],
       "dod": "createCostSync takes {repo, lookupFor}; image wiring passes lookupFor from the provider registry; every existing cost-sync and image cost test passes with only constructor calls edited",
       "files_hint": [
         "src/server/modules/generations/cost-sync.ts",
@@ -125,17 +97,8 @@
       "id": "T7",
       "title": "Write the recordings repo over the rebuilt table",
       "layer": "infra",
-      "deps": [
-        "T1",
-        "T2"
-      ],
-      "acs": [
-        "AC-03",
-        "AC-13",
-        "AC-15",
-        "AC-16",
-        "AC-18"
-      ],
+      "deps": ["T1", "T2"],
+      "acs": ["AC-03", "AC-13", "AC-15", "AC-16", "AC-18"],
       "dod": "repo integration tests prove insertAtomic with a commit callback (rollback on throw), list newest first with cursor/limit, get, deleteAtomic with a file step, listPendingCosts and resolveCost honouring the status CHECK; rows zod-parsed",
       "files_hint": [
         "src/server/modules/audio/recordings-repo.ts",
@@ -149,25 +112,8 @@
       "id": "T8",
       "title": "Build the audio service: validate, speak, save atomically, track cost, delete",
       "layer": "app",
-      "deps": [
-        "T3",
-        "T4",
-        "T5",
-        "T6",
-        "T7"
-      ],
-      "acs": [
-        "AC-03",
-        "AC-04",
-        "AC-05",
-        "AC-06",
-        "AC-08",
-        "AC-09",
-        "AC-10",
-        "AC-13",
-        "AC-16",
-        "AC-20"
-      ],
+      "deps": ["T3", "T4", "T5", "T6", "T7"],
+      "acs": ["AC-03", "AC-04", "AC-05", "AC-06", "AC-08", "AC-09", "AC-10", "AC-13", "AC-16", "AC-20"],
       "dod": "service integration tests with a fake SpeechProvider prove every flow-1 branch (refused input, provider error/timeout, conversion/save failure → nothing left, saved with known/pending/unavailable + estimate + tracking), delete success/failure/missing, and list with modelName fallback",
       "files_hint": [
         "src/server/modules/audio/service.ts",
@@ -182,18 +128,8 @@
       "id": "T9",
       "title": "Expose the audio contract, wire it in createApp and retire the prototype server code",
       "layer": "ports",
-      "deps": [
-        "T8"
-      ],
-      "acs": [
-        "AC-03",
-        "AC-04",
-        "AC-05",
-        "AC-06",
-        "AC-15",
-        "AC-16",
-        "AC-19"
-      ],
+      "deps": ["T8"],
+      "acs": ["AC-03", "AC-04", "AC-05", "AC-06", "AC-15", "AC-16", "AC-19"],
       "dod": "route integration tests prove every operation of contracts/openapi.yaml with the shared schemas (incl. 403 for a foreign origin on each), boot wiring (one sweep with both id sets, audio cost resume), and the prototype server files are gone; full gate green",
       "files_hint": [
         "src/server/modules/audio/routes.ts",
@@ -213,10 +149,7 @@
       "title": "Group the navigation into Image and Audio and move Speech under /audio",
       "layer": "ui",
       "deps": [],
-      "acs": [
-        "AC-01",
-        "AC-02"
-      ],
+      "acs": ["AC-01", "AC-02"],
       "dod": "component tests prove two groups in order with entries, the current entry marked, the /speech alias replaced by /audio/speech, image addresses unchanged and Speech kept mounted",
       "files_hint": [
         "src/web/sections.tsx",
@@ -232,14 +165,8 @@
       "id": "T11",
       "title": "Show speech prices, estimates and recording costs honestly",
       "layer": "ui",
-      "deps": [
-        "T2"
-      ],
-      "acs": [
-        "AC-11",
-        "AC-12",
-        "AC-13"
-      ],
+      "deps": ["T2"],
+      "acs": ["AC-11", "AC-12", "AC-13"],
       "dod": "unit + component tests prove every estimate wording, two significant digits, «< $0.0001», «Free», per-output and unknown wording, and the cost label for known/pending/unavailable with and without an estimate",
       "files_hint": [
         "src/web/lib/format.ts",
@@ -256,14 +183,8 @@
       "id": "T12",
       "title": "Build ModelSelect, VoiceSelect and descriptor-driven VoiceControls",
       "layer": "ui",
-      "deps": [
-        "T2"
-      ],
-      "acs": [
-        "AC-07",
-        "AC-08",
-        "AC-09"
-      ],
+      "deps": ["T2"],
+      "acs": ["AC-07", "AC-08", "AC-09"],
       "dod": "component tests prove grouping by maker with price/limit, voice filtering above 20, provider default + typed voice for voice-less models, only the model's controls rendered from descriptors, steps labels, Reset to the model's defaults leaving voice and text",
       "files_hint": [
         "src/web/features/audio/ModelSelect.tsx",
@@ -278,23 +199,8 @@
       "id": "T13",
       "title": "Rebuild the Speech page on the new contract",
       "layer": "ui",
-      "deps": [
-        "T9",
-        "T10",
-        "T11",
-        "T12"
-      ],
-      "acs": [
-        "AC-02",
-        "AC-03",
-        "AC-04",
-        "AC-05",
-        "AC-06",
-        "AC-08",
-        "AC-14",
-        "AC-17",
-        "AC-20"
-      ],
+      "deps": ["T9", "T10", "T11", "T12"],
+      "acs": ["AC-02", "AC-03", "AC-04", "AC-05", "AC-06", "AC-08", "AC-14", "AC-17", "AC-20"],
       "dod": "component tests prove compose/validation/working/provider-error/save-error/not-configured/models-error states, one request per click, state kept across navigation, result autoplay + download, credits refresh; prototype shared/audio.ts and old api methods deleted; full gate green",
       "files_hint": [
         "src/web/features/audio/SpeechPage.tsx",
@@ -312,15 +218,8 @@
       "id": "T14",
       "title": "List recent recordings with reuse, delete and live pending costs",
       "layer": "ui",
-      "deps": [
-        "T13"
-      ],
-      "acs": [
-        "AC-13",
-        "AC-15",
-        "AC-16",
-        "AC-18"
-      ],
+      "deps": ["T13"],
+      "acs": ["AC-13", "AC-15", "AC-16", "AC-18"],
       "dod": "component tests prove the ten latest with all fields, loading/empty/error, 10 s refresh only while a cost is pending, reuse filling the form, the replace confirm, the model-gone notice, delete confirm/busy/failure and removal",
       "files_hint": [
         "src/web/features/audio/RecentRecordings.tsx",
@@ -336,18 +235,10 @@
       "id": "T15",
       "title": "Prove the audio NFRs and the image/audio separation",
       "layer": "tests",
-      "deps": [
-        "T9"
-      ],
-      "acs": [
-        "AC-14",
-        "AC-19"
-      ],
+      "deps": ["T9"],
+      "acs": ["AC-14", "AC-19"],
       "dod": "timing tests meet the §6 thresholds and cross-context tests prove recordings stay out of every image list and the key never appears in answers, rows or settings",
-      "files_hint": [
-        "src/server/modules/audio/nfr.int.test.ts",
-        "src/server/modules/audio/cross-context.int.test.ts"
-      ],
+      "files_hint": ["src/server/modules/audio/nfr.int.test.ts", "src/server/modules/audio/cross-context.int.test.ts"],
       "file": "docs/features/text-to-speech/tasks/audio-nfr-and-cross-context.md",
       "status": "todo"
     },
@@ -355,19 +246,10 @@
       "id": "T16",
       "title": "Register the audio components in the design canon and the architecture map",
       "layer": "docs",
-      "deps": [
-        "T13",
-        "T14"
-      ],
-      "acs": [
-        "AC-07",
-        "AC-15"
-      ],
+      "deps": ["T13", "T14"],
+      "acs": ["AC-07", "AC-15"],
       "dod": "design-system.md lists Tabs, Slider, Label and the new audio components with their states; architecture-map.md describes the rebuilt audio module, the speech port and the grouped sections",
-      "files_hint": [
-        "docs/design-system.md",
-        "docs/architecture-map.md"
-      ],
+      "files_hint": ["docs/design-system.md", "docs/architecture-map.md"],
       "file": "docs/features/text-to-speech/tasks/register-audio-components.md",
       "status": "todo"
     }
