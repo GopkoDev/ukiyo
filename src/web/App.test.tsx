@@ -40,7 +40,7 @@ describe("App frame (SCR-04, SCR-05)", () => {
   it("lists Generate then Gallery and marks Generate current at the root address (AC-01)", async () => {
     at("/");
     const links = within(nav()).getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual(["Generate", "Gallery", "Speech", "Models"]);
+    expect(links.map((l) => l.textContent)).toEqual(["Generate", "Gallery", "Models", "Speech"]); // Image group, then Audio (ADR-0046)
     expect(entry("Generate")).toHaveAttribute("aria-current", "page");
     expect(entry("Gallery")).not.toHaveAttribute("aria-current");
     expect(await screen.findByText("OpenRouter is not configured.")).toBeVisible();

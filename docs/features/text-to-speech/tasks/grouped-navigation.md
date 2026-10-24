@@ -9,8 +9,8 @@ files_hint: ["src/web/sections.tsx", "src/web/sections.test.tsx", "src/web/compo
 owner: "pipeline agent (implement)"
 estimate: "S"
 context_budget: "S"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Self-contained task (sdd:tasks). Work from what is inlined here; if a slice is insufficient, ambiguous or contradicts the code, open the named file and follow it. Do not invent the missing part. -->
