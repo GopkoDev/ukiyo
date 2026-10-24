@@ -1,6 +1,6 @@
 ---
 status: Living
-updated_at: "2026-10-19"
+updated_at: "2026-10-25"
 ---
 
 # Domain Context — Ukiyo
@@ -9,8 +9,8 @@ updated_at: "2026-10-19"
 
 - Comment — the Owner's own free-text note on a generation (one per generation, editable, may be empty). NOT the prompt: the prompt was sent to the provider, the comment never is.
 - Cost lookup — Ukiyo asking a provider, some time after a generation, for the price it did not state in its answer; it ends with a known amount or «unavailable». NOT a price estimate made before generating (roadmap step 7).
-- Cost status — whether a generation's price is `known` (an exact amount), `pending` (expected to arrive later) or `unavailable` (the provider gave none). NOT a zero price: an unknown cost is never shown or stored as free.
-- Deletion — the Owner removing a generation for good: its record, comment, tags, output images and input copies disappear together, with no undo. NOT hiding or archiving: nothing of a deleted generation stays on the machine.
+- Cost status — whether a generation's or a recording's price is `known` (an exact amount), `pending` (expected to arrive later) or `unavailable` (the provider gave none). NOT a zero price: an unknown cost is never shown or stored as free.
+- Deletion — the Owner removing a generation (or a recording) for good: its record, comment, tags, output images and input copies (for a recording: its audio file) disappear together, with no undo. NOT hiding or archiving: nothing of a deleted generation stays on the machine.
 - Derived generation — a generation made by re-running or reusing another one; it records its source generation and keeps its own copies of every input. NOT a variation the provider made: deriving is the Owner's action in Ukiyo.
 - Favorite model — an image model the Owner marked with ★ under one provider; the model picker lists favorites first in their own group. NOT a default model: marking a favorite never selects it.
 - Gallery — the owner's browsable list of every saved generation, newest first, with a detail view per generation. NOT a provider's playground history: the gallery lives only on the owner's machine.
@@ -23,14 +23,20 @@ updated_at: "2026-10-19"
 - Model preference — the Owner's per-model choices kept on the machine for one provider + model id: favorite and hidden. NOT a generation parameter: preferences shape the picker, they are never sent to a provider.
 - Output image — an image file a provider returned for a generation, stored on the owner's machine. NOT an input image (an image the owner attaches to a prompt — roadmap step 3).
 - Owner — the single person who runs Ukiyo on their own machine and holds the provider API keys. The only human role; there are no accounts, admins or guests.
-- Price estimate — what Ukiyo expects a request to cost before it is sent, from the provider's published price (or, for per-token models, the Owner's own past known costs); always labelled as an estimate. NOT the generation's cost: the recorded cost after generating is the only source of truth, and the estimate is never stored.
+- Price estimate — what Ukiyo expects a request to cost before it is sent, from the provider's published price (or, for per-token models, the Owner's own past known costs); always labelled as an estimate. NOT the generation's cost: the recorded cost after generating is the only source of truth, and an image estimate is never stored. A recording keeps its up-front estimate beside its cost, always labelled as an estimate (provisional — pending text-to-speech spec §8 Q2).
 - Prompt group — every generation whose prompt is exactly the same text (same characters, spaces, line breaks and case), whatever model or parameters made it. NOT similar prompts: «a cat» and «A cat» are two groups.
-- Provider — an external image-generation service Ukiyo calls with the owner's key (OpenRouter, Vercel AI Gateway). NOT a model: one provider offers many image models.
+- Provider — an external generation service Ukiyo calls with the owner's key (OpenRouter, Vercel AI Gateway for images; OpenRouter for speech). NOT a model: one provider offers many image and speech models.
+- Recording — one text-to-speech request the Owner sent to a provider together with everything it produced and cost: text, speech model, voice, voice settings, audio file, billed characters, cost (with its status) and the up-front estimate (provisional — text-to-speech spec §8 Q2). NOT a generation: a generation produces images; recordings are kept and listed apart from them.
 - Re-run — starting a new generation from an existing one with the same provider, model, prompt, parameters and input images pre-filled; the Owner may change anything before generating. NOT a promise of the same picture: re-running resends the same inputs, results can differ.
+- Recent recordings — the Owner's ten latest recordings listed on the Speech page, newest first. NOT the audio gallery (roadmap step 19): it never pages.
 - Recent generations — the Owner's ten latest generations shown next to the generate form, one thumbnail each, newest first. NOT the gallery: it never pages and holds only the latest ten.
 - Reuse (use as input) — attaching one of a generation's output images as an input image of the next generation in one action, without saving and re-uploading the file. NOT a re-run: only that image is carried over.
-- Section — one top-level area of Ukiyo with its own page and address, listed in the navigation bar (Generate, Gallery, Models; later Folders). NOT a generation's detail page: a detail page belongs to the Gallery section.
+- Section — one top-level area of Ukiyo with its own page and address, listed in the navigation bar under its section group (Image: Generate, Gallery, Models, later Folders; Audio: Speech, later the audio gallery and Voices). NOT a generation's detail page: a detail page belongs to the Gallery section.
+- Section group — a named block of sections in the navigation bar: «Image» first, «Audio» second. NOT a section: a group has no page or address of its own.
+- Speech model — a provider-offered model that turns text into spoken audio, identified by the provider's model id (e.g. `elevenlabs/eleven-v3`). NOT an image model: speech models never appear in the image model picker.
 - Source generation — the generation a re-run or reuse started from (the parent in the lineage). NOT the provider's original request: it is a Ukiyo generation record.
+- Voice — the speaker a speech model reads the text with, named by the provider (e.g. «george», «Kore»); each model offers its own voices, and some use a provider default. NOT a voice preset (roadmap step 21): a voice is the provider's, a preset is the Owner's saved choice of voice + model + settings.
+- Voice settings — the per-model controls the Owner sets for a recording (e.g. speed, stability, similarity, style, delivery instructions); only those the chosen speech model accepts are sent and recorded. NOT generation parameters of image models.
 - Tag — a short label the Owner attaches to a generation to group it with others (normalized: trimmed, lower-case; a generation holds each tag once). NOT a model or provider attribute: tags come only from the Owner.
 
 ## Invariants
@@ -39,6 +45,7 @@ updated_at: "2026-10-19"
 
 - A generation is saved only together with all of its output images and copies of all of its input images — never a record without its image files, never image files without a record.
 - A deletion is all-or-nothing too: a generation's record and all its files disappear together — never a record whose files are gone, never files of a deleted record that stay reachable.
+- A recording is saved only together with its audio file — never a record without its file, never a file without its record; its deletion is all-or-nothing too.
 - A provider API key never leaves the server process — it is never shown to the owner's browser, stored in a generation's raw request, or written to logs.
 - The app is reachable only from the owner's own machine.
 
