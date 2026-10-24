@@ -106,7 +106,7 @@
         "tests/helpers/recordings.ts"
       ],
       "file": "docs/features/text-to-speech/tasks/recordings-repo.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T8",
