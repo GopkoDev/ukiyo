@@ -94,7 +94,7 @@ Modular monolith (ADR-0002). The audio module is rebuilt in the layered shape of
 
 ```
 src/shared/
-├── audio.ts            Recording DTOs, StartSpeechRequest, VoiceSettings, billedChars (rewritten)
+├── speech.ts           Recording DTOs, StartSpeechRequest, VoiceSettings, billedChars (new; replaces the prototype's audio.ts)
 └── speech-models.ts    family spec map, SpeechModel DTO, pricing unit, settingsFor (new)
 src/server/modules/
 ├── providers/
