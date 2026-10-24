@@ -10,7 +10,7 @@
 | T2 | Add the speech family spec map and the shared speech DTOs | domain | pipeline agent | M | — | done | COMMIT |
 | T3 | Build the SpeechProvider port and the OpenRouter speech adapter | infra | pipeline agent | M | T2 | done | COMMIT |
 | T4 | Wrap raw PCM as a WAV file | domain | pipeline agent | S | — | done | COMMIT |
-| T5 | Give the file store single-file audio staging, trash and one combined boot sweep | infra | pipeline agent | M | — | todo | — |
+| T5 | Give the file store single-file audio staging, trash and one combined boot sweep | infra | pipeline agent | M | — | done | COMMIT |
 | T6 | Generalise cost sync over an injected repo and lookup | app | pipeline agent | S | — | todo | — |
 | T7 | Write the recordings repo over the rebuilt table | infra | pipeline agent | M | T1, T2 | todo | — |
 | T8 | Build the audio service: validate, speak, save atomically, track cost, delete | app | pipeline agent | L | T3, T4, T5, T6, T7 | todo | — |
