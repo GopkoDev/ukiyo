@@ -217,6 +217,143 @@ sequenceDiagram
 
 **Critical flow 3: delete a recording** (spec AC-16) — the service runs one transaction: delete the row, then `trashAudioSync` moves the file into staging as the last step. After commit it purges the file and calls `costSync.forget(id)`. If the transaction fails, `restoreAudioSync` puts the file back and the Owner sees «deletion failed».
 
+### Flow 4: open the Speech page and choose a model (spec AC-01, AC-06, AC-07, AC-08, AC-09, AC-11, AC-12, AC-14)
+
+```mermaid
+sequenceDiagram
+    actor user as <user>
+    participant ui as <ui>
+    participant service as <service>
+    participant ext as <external-system>
+    Note over ui: Precondition - the Audio group is shown after the Image group; the former Speech address is replaced by the new one
+    user->>ui: opens Speech in the Audio group
+    ui->>service: list speech models
+    alt catalog cached for under 10 minutes
+        service-->>ui: models with controls, voices, limits, pricing unit
+    else cache cold
+        service->>ext: read the public speech catalog
+        ext-->>service: models, voices, prices, stated limits
+        service->>service: apply the family spec map, fallback voice and text only
+        service-->>ui: models with controls, voices, limits, pricing unit
+    end
+    ui->>service: read the credit balance
+    alt key not configured
+        service-->>ui: not configured
+        ui-->>user: speech needs OpenRouter and how to configure it, generate unavailable
+    else configured
+        service->>ext: read credits
+        ext-->>service: balance
+        service-->>ui: balance
+    end
+    user->>ui: chooses a model, voice and control values
+    ui->>ui: show only that model's controls, keep shared values within range, keep voice if offered
+    ui->>ui: estimate from billed characters x per-character price, or say how it is priced
+    ui-->>user: controls, voice list, limit, estimate or pricing note
+```
+
+### Flow 5: recent recordings and reuse (spec AC-15, AC-18)
+
+```mermaid
+sequenceDiagram
+    actor user as <user>
+    participant ui as <ui>
+    participant service as <service>
+    participant store as <data-store>
+    ui->>service: list the ten latest recordings
+    service->>store: read latest recordings by id, newest first
+    store-->>service: recordings incl. prototype rows
+    service-->>ui: recordings with cost status, estimate, model name, file address
+    loop while any cost is pending
+        ui->>service: refresh the latest recordings every 10 s
+    end
+    user->>ui: chooses a recording
+    alt form holds different unsent text
+        ui-->>user: asks before replacing
+    end
+    alt its model is no longer offered
+        ui-->>user: says so, keeps the current model, fills text and accepted settings
+    else offered
+        ui-->>user: fills text, model, voice and settings
+    end
+    user->>ui: plays or downloads it
+    ui->>service: read the recording's audio file
+    service->>store: resolve the recorded path inside the data dir
+    service-->>ui: audio bytes
+```
+
+### Flow 6: delete a recording (spec AC-16)
+
+```mermaid
+sequenceDiagram
+    actor user as <user>
+    participant ui as <ui>
+    participant service as <service>
+    participant store as <data-store>
+    user->>ui: deletes a recording
+    ui->>service: delete recording
+    alt recording not found
+        service-->>ui: not found
+        ui-->>user: it is already gone
+    else found
+        service->>store: delete row and move the file to trash in one transaction
+        Note over service,store: persists removal of recording
+        alt transaction fails
+            service->>store: restore the file from trash
+            service-->>ui: deletion failed
+            ui-->>user: recording stays complete, deletion failed
+        else committed
+            service->>store: purge the trashed file
+            service->>service: stop waiting for its cost
+            service-->>ui: deleted
+            ui-->>user: recording disappears from the list
+        end
+    end
+```
+
+### Flow 7: boot after the update (spec AC-18, §6 Prototype data, Cost lookups)
+
+```mermaid
+sequenceDiagram
+    participant service as <service>
+    participant store as <data-store>
+    participant ext as <external-system>
+    service->>store: apply pending migrations in one transaction
+    Note over service,store: persists rebuilt recording table, prototype rows known or unavailable
+    service->>store: sweep files - restore interrupted deletions, then drop staging and orphan audio files
+    service->>store: list pending recording costs
+    loop each pending cost
+        alt deadline passed
+            service->>ext: one last cost lookup
+        else young
+            service->>ext: continue the lookup schedule
+        end
+    end
+```
+
+**AC → flow coverage (use-case pass: US-01 → flows 4, 3·nav; US-02 → flow 1; US-03 → flow 4; US-04 → flows 1, 2, 4; US-05 → flows 5, 6; US-06 → flows 5, 7):**
+
+| AC | Where shown |
+|---|---|
+| AC-01 | flow 4 precondition note (nav groups, address replacement — UI routing, no server call) |
+| AC-02 | non-runtime: the Speech page stays mounted (ADR-0045); its in-flight request continues in flow 1 |
+| AC-03 | flow 1 happy path |
+| AC-04 | flow 1 «model unknown or text over its limit or empty» |
+| AC-05 | flow 1 «refused, failed, timed out or no audio» |
+| AC-06 | flow 4 «key not configured» |
+| AC-07, AC-08, AC-09 | flow 4 (catalog + spec map + fallback; UI keeps values within range) |
+| AC-10 | flow 1 (wrap raw PCM; one-transaction insert + commit) |
+| AC-11, AC-12 | flow 4 estimate step |
+| AC-13 | flow 1 (initial status) + flow 2 (reconciliation) |
+| AC-14 | flow 4 credits; non-runtime: recordings never enter image lists (separate tables/queries) |
+| AC-15 | flow 5 |
+| AC-16 | flow 6 |
+| AC-17 | non-runtime: the UI disables generate while flow 1's request is in flight |
+| AC-18 | flow 7 (migration) + flow 5 (listed, playable) |
+| AC-19 | non-runtime: the request guard middleware refuses foreign origins before any flow (ADR-0007) |
+| AC-20 | flow 1 «conversion or save fails» |
+
+Flagged: flows 1–2 (drawn in design) name §5 building blocks rather than generic participants; left as drawn (additive rule).
+
 ## 7. Deployment view
 
 <!-- N/A: reuses the existing deployment unit (one local Node process on 127.0.0.1:8787 serving API + SPA), no infra change. -->
