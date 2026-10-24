@@ -14,7 +14,7 @@
 | T6 | Generalise cost sync over an injected repo and lookup | app | pipeline agent | S | — | done | COMMIT |
 | T7 | Write the recordings repo over the rebuilt table | infra | pipeline agent | M | T1, T2 | done | COMMIT |
 | T8 | Build the audio service: validate, speak, save atomically, track cost, delete | app | pipeline agent | L | T3, T4, T5, T6, T7 | done | COMMIT |
-| T9 | Expose the audio contract, wire it in createApp and retire the prototype server code | ports | pipeline agent | M | T8 | todo | — |
+| T9 | Expose the audio contract, wire it in createApp and retire the prototype server code | ports | pipeline agent | M | T8 | done | COMMIT |
 | T10 | Group the navigation into Image and Audio and move Speech under /audio | ui | pipeline agent | S | — | todo | — |
 | T11 | Show speech prices, estimates and recording costs honestly | ui | pipeline agent | S | T2 | todo | — |
 | T12 | Build ModelSelect, VoiceSelect and descriptor-driven VoiceControls | ui | pipeline agent | M | T2 | todo | — |

@@ -18,7 +18,7 @@ import type { SpeechCatalog } from "../providers/speech-catalog";
 import type { SpeechProvider, SpeechRegistry, SpeechResult } from "../providers/speech-port";
 import type { FileStore } from "../storage/file-store";
 import { costFromResult, groupDigits, toRecordingDto } from "./domain";
-import type { RecordingRecord, RecordingsRepo } from "./recordings-repo";
+import type { RecordingRecord, RecordingsRepo } from "./repo";
 import { AudioConversionError, toPlayable } from "./wav";
 
 export const SPEECH_PROVIDER = "openrouter";

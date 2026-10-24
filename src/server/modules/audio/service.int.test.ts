@@ -12,7 +12,7 @@ import { createSpeechCatalog } from "../providers/speech-catalog";
 import type { SpeechInput, SpeechProvider, SpeechResult } from "../providers/speech-port";
 import { speechRegistryOf } from "../providers/speech-port";
 import { createFileStore } from "../storage/file-store";
-import { createRecordingsRepo } from "./recordings-repo";
+import { createRecordingsRepo } from "./repo";
 import { createAudioService } from "./service";
 
 const MP3 = new Uint8Array([0x49, 0x44, 0x33, 4, 0, 0, 1, 2]);

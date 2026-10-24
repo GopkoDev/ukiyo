@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { seedRecording } from "../../../../tests/helpers/recordings";
 import { createTestApp } from "../../../../tests/helpers/test-app";
-import { createRecordingsRepo, type RecordingRecord } from "./recordings-repo";
+import { createRecordingsRepo, type RecordingRecord } from "./repo";
 
 let t: ReturnType<typeof createTestApp>;
 afterEach(() => t.cleanup());

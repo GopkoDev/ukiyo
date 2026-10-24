@@ -142,7 +142,7 @@
         "tests/fixtures/openrouter/speech-models.json"
       ],
       "file": "docs/features/text-to-speech/tasks/audio-routes-and-wiring.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T10",

@@ -1,5 +1,5 @@
 import type { CostStatus, Recording } from "../../../shared/speech";
-import type { RecordingRecord } from "./recordings-repo";
+import type { RecordingRecord } from "./repo";
 
 const toMicros = (usd: number) => Math.round(usd * 1_000_000);
 

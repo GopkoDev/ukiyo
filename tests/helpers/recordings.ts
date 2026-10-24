@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Db } from "../../src/server/db/client";
-import { createRecordingsRepo, type RecordingRecord } from "../../src/server/modules/audio/recordings-repo";
+import { createRecordingsRepo, type RecordingRecord } from "../../src/server/modules/audio/repo";
 
 /** A tiny MP3-looking payload (ID3 header bytes) — enough for the file to exist and be served. */
 export const TINY_MP3 = new Uint8Array([0x49, 0x44, 0x33, 4, 0, 0, 0, 0, 0, 1]);

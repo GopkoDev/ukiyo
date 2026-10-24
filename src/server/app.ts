@@ -4,9 +4,9 @@ import type { Db } from "./db/client";
 import { type Config, DEV_UI_PORT } from "./lib/config";
 import { notFound, onError } from "./lib/errors";
 import { requestGuard } from "./lib/request-guard";
-import { createOpenRouterSpeech } from "./modules/audio/openrouter-speech";
-import { createAudioRepo } from "./modules/audio/repo";
+import { createRecordingsRepo } from "./modules/audio/repo";
 import { registerAudioRoutes } from "./modules/audio/routes";
+import { createAudioService } from "./modules/audio/service";
 import { createCostSync, type Timers } from "./modules/generations/cost-sync";
 import { createJobSlot } from "./modules/generations/jobs";
 import { createGenerationsRepo } from "./modules/generations/repo";
@@ -15,9 +15,12 @@ import { createGenerationsService } from "./modules/generations/service";
 import { createModelsRepo } from "./modules/models/repo";
 import { registerModelsRoutes } from "./modules/models/routes";
 import { createModelCatalog } from "./modules/providers/catalog";
+import { createOpenRouterSpeech } from "./modules/providers/openrouter-speech";
 import { createPriceCatalog } from "./modules/providers/prices";
 import { createProviderRegistry } from "./modules/providers/registry";
 import { registerProvidersRoutes } from "./modules/providers/routes";
+import { createSpeechCatalog } from "./modules/providers/speech-catalog";
+import { speechRegistryOf } from "./modules/providers/speech-port";
 import { createFileStore } from "./modules/storage/file-store";
 import { registerSystemRoutes } from "./modules/system/routes";
 
@@ -78,16 +81,34 @@ export function createApp(deps: AppDeps, options: CreateAppOptions = {}) {
     timeoutMs: deps.generationTimeoutMs ?? GENERATION_TIMEOUT_MS,
   });
   repo.backfillPromptKeys(); // pre-0010 generations get their prompt key (ADR-0037)
-  service.sweepOnBoot(); // drop leftovers of an interrupted save (ADR-0006)
-  costSync.resume(); // pending costs survive restarts (ADR-0013)
   registerGenerationsRoutes(api, { service, files });
 
-  registerAudioRoutes(api, {
-    repo: createAudioRepo(deps.db),
-    speech: createOpenRouterSpeech(deps.config.openRouterApiKey, deps.fetch),
-    dataDir: deps.config.dataDir,
+  // Audio (text-to-speech): speech behind its own port (ADR-0039), its own cost resolver over recordings (ADR-0043).
+  const speech = speechRegistryOf([
+    createOpenRouterSpeech({ apiKey: deps.config.openRouterApiKey, fetch: deps.fetch ?? fetch }),
+  ]);
+  const recordings = createRecordingsRepo(deps.db);
+  const audioCostSync = createCostSync({
+    repo: recordings,
+    lookupFor: (provider) => speech.get(provider)?.lookupCost,
+    now: deps.now,
+    timers: deps.timers,
+  });
+  const audio = createAudioService({
+    speech,
+    catalog: createSpeechCatalog(speech, deps.now),
+    repo: recordings,
+    files,
+    costSync: audioCostSync,
+    timeoutMs: deps.generationTimeoutMs ?? GENERATION_TIMEOUT_MS,
     now: deps.now,
   });
+  registerAudioRoutes(api, { service: audio });
+
+  // One sweep once both repos exist: interrupted image and audio deletions are restored, leftovers dropped (ADR-0042).
+  files.sweep(new Set(repo.allIds()), new Set(recordings.allIds()));
+  costSync.resume(); // pending costs survive restarts (ADR-0013)
+  audioCostSync.resume();
 
   const app = new Hono();
   app.onError(onError);
@@ -102,5 +123,10 @@ export function createApp(deps: AppDeps, options: CreateAppOptions = {}) {
     app.get("*", serveStatic({ root, path: "index.html" }));
   }
   /** Cancels background work (pending-cost lookups) — on shutdown and before a test restart. */
-  return Object.assign(app, { stopBackground: () => costSync.stop() });
+  return Object.assign(app, {
+    stopBackground: () => {
+      costSync.stop();
+      audioCostSync.stop();
+    },
+  });
 }

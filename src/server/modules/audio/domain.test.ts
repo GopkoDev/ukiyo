@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { costFromResult, toRecordingDto } from "./domain";
-import type { RecordingRecord } from "./recordings-repo";
+import type { RecordingRecord } from "./repo";
 
 describe("audio domain", () => {
   it("records a stated price as known, a reference as pending, neither as unavailable — never $0 for unknown", () => {
