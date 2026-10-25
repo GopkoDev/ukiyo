@@ -64,7 +64,16 @@ updated_at: "2026-10-25"
 | VoiceControls | `src/web/features/audio/VoiceControls.tsx` | slider / steps (labelled) / switch / text (≤ 1 000) / none («No adjustable settings for this model») / Reset values | renders the model's control descriptors from `src/shared/speech-models.ts` |
 | CostLabel | `src/web/features/audio/CostLabel.tsx` | known / pending («cost pending · ≈ $x») / unavailable (muted, «≈ $x») | never «$0» for an unknown cost; two significant digits, «< $0.0001» |
 | RecentRecordings | `src/web/features/audio/RecentRecordings.tsx` | loading / empty / error + Try again / list / pending refresh (10 s) / reuse / Replace your text? (`ReplaceTextDialog`) / delete (`DeleteRecording`: confirm · Deleting… · failed) | the step-19 audio gallery card grows from this row |
-| SpeechPage | `src/web/features/audio/SpeechPage.tsx` | SCR-02 / SCR-03 states in `docs/features/text-to-speech/screens.md` | the `/audio/speech` section; side panel as a Sheet below `lg` |
+| SpeechPage | `src/web/features/audio/SpeechPage.tsx` | SCR-02 / SCR-03 states in `docs/features/text-to-speech/screens.md`; Reuse arrival (`?reuse=`) per `docs/features/audio-gallery/screens.md` SCR-08 | the `/audio/speech` section; side panel as a Sheet below `lg` |
+| Tile · CardBadges | `src/web/features/gallery/Tile.tsx`, `CardBadges.tsx` | default / image unavailable / pending cost (watcher) / tags + comment marker | the image gallery card |
+| GalleryViews · ByModel · ByPrompt | `src/web/features/gallery/` | view switch / model choice (counts, error + Try again) / sections with «Show all N» | image gallery views |
+| GenerationDialog · GenerationDetail · Notes | `src/web/features/gallery/` | dialog over the grid / full page / Notes = `NotesCard` with image calls | image detail; built on the media-gallery layer |
+| MediaDialog | `src/web/features/media-gallery/MediaDialog.tsx` | open / stepping (Newer, Older, ← →) / busy («Save or cancel your changes first») / loading next / next failed / «<Noun> deleted.» / not in order | the shared dialog engine (audio-gallery ADR-0049); arrows inside text fields and media players never step |
+| NotesCard | `src/web/features/media-gallery/NotesCard.tsx` | no comment / editing (n / 2000) / saving / validation / tags + add | one comment + tags for any medium |
+| usePagingSentinel · gridPlace · notice · scrollMemory | `src/web/features/media-gallery/` | — | shared grid paging, close-to-place, one-off notices, per-view scroll |
+| RecordingCard | `src/web/features/audio/gallery/RecordingCard.tsx` | default / playing / audio unavailable / cost pending (watcher) / tags «+N» + comment marker / Reuse | the audio gallery card (step 21 reuses it) |
+| RecordingDialog · RecordingPage (RecordingDetail) | `src/web/features/audio/gallery/` | SCR-04 / SCR-05 states in `docs/features/audio-gallery/screens.md` | a recording's dialog and page |
+| AudioGallery · AudioGalleryViews · AudioByModel | `src/web/features/audio/gallery/` | SCR-02 / SCR-03 states in `docs/features/audio-gallery/screens.md` | the `/audio/gallery` section |
 
 ## Interaction & writing conventions
 

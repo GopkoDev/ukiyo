@@ -9,8 +9,8 @@ files_hint: ["docs/design-system.md", "docs/architecture-map.md"]
 owner: "agent (sdd:implement)"
 estimate: "S"
 context_budget: "S"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T16 — Register the new components and update the architecture map

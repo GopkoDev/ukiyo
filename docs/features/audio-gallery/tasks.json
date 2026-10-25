@@ -245,7 +245,7 @@
       "dod": "docs updated; gate green",
       "files_hint": ["docs/design-system.md", "docs/architecture-map.md"],
       "file": "docs/features/audio-gallery/tasks/T16-register-components-and-map.md",
-      "status": "todo"
+      "status": "done"
     }
   ]
 }
