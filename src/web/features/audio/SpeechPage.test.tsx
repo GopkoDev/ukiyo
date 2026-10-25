@@ -35,6 +35,8 @@ const model = (over: Partial<SpeechModel> & { id: string }): SpeechModel => ({
   ...over,
 });
 const V3 = model({ id: "elevenlabs/eleven-v3", name: "Eleven v3" });
+const FLASH = model({ id: "elevenlabs/eleven-flash-v2", name: "Flash v2" });
+const OPENAI = model({ id: "openai/tts-1", name: "TTS 1", maker: "OpenAI", voices: ["alloy"] });
 const FISH = model({ id: "fish-audio/s1", name: "S1", maker: "Fish Audio", voiceMode: "optional", voices: [] });
 
 const recording = (over: Partial<Recording> = {}): Recording => ({
@@ -249,7 +251,7 @@ describe("Speech page — recent recordings (SCR-04, AC-15, AC-18)", () => {
     });
     await ready();
     openRecent();
-    fireEvent.click(await screen.findByRole("button", { name: /Reuse me/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Reuse «Reuse me/ }));
     expect(text()).toHaveValue("Reuse me");
     fireEvent.mouseDown(screen.getByRole("tab", { name: "Settings" }));
     expect(await screen.findByRole("button", { name: "Voice" })).toHaveTextContent("Sarah");
@@ -272,10 +274,123 @@ describe("Speech page — recent recordings (SCR-04, AC-15, AC-18)", () => {
     await ready();
     openRecent();
     expect(await screen.findByText("$0.00016")).toBeVisible();
-    fireEvent.click(await screen.findByRole("button", { name: /Old one/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Reuse «Old one/ }));
     expect(await screen.findByText("Eleven v1 is no longer offered — kept Eleven v3")).toBeVisible();
     expect(text()).toHaveValue("Old one");
     fireEvent.mouseDown(screen.getByRole("tab", { name: "Settings" }));
     expect(await screen.findByRole("button", { name: "Model" })).toHaveTextContent("Eleven v3");
+  });
+});
+
+describe("Speech page — review fixes", () => {
+  it("updates the latest result's pending cost without a reload (R1, AC-13)", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    m.createRecording.mockResolvedValue(recording());
+    m.recording.mockResolvedValue(recording({ costStatus: "known", costMicros: 900 }));
+    await ready();
+    fireEvent.change(text(), { target: { value: "Hello there" } });
+    fireEvent.click(generate());
+    const result = await screen.findByRole("region", { name: "Latest recording" });
+    expect(within(result).getByText("cost pending · ≈ $0.00088")).toBeVisible();
+    await act(async () => vi.advanceTimersByTime(10_000));
+    expect(await within(result).findByText("$0.0009")).toBeVisible();
+    expect(m.recording).toHaveBeenCalledWith("01N0000000000000000000000A");
+    vi.useRealTimers();
+  });
+
+  it("drops a chosen voice the new model doesn't offer and keeps settings within its range (R2, AC-08)", async () => {
+    m.speechModels.mockResolvedValue({ models: [V3, FISH, FLASH, OPENAI], fetchedAt: "x" });
+    m.recordings.mockResolvedValue({
+      items: [
+        recording({ model: OPENAI.id, modelName: "TTS 1", voice: "alloy", text: "Fast", settings: { speed: 2 } }),
+      ],
+      nextCursor: null,
+    });
+    m.createRecording.mockResolvedValue(recording());
+    await ready();
+    fireEvent.click(screen.getByRole("button", { name: "Voice" }));
+    fireEvent.click(screen.getByRole("option", { name: "Sarah" }));
+    fireEvent.click(modelButton());
+    fireEvent.click(screen.getByRole("option", { name: /S1/ }));
+    expect(screen.getByRole("textbox", { name: "Type a voice name" })).toHaveValue("");
+    fireEvent.change(text(), { target: { value: "Hi" } });
+    fireEvent.click(generate());
+    await waitFor(() => expect(m.createRecording).toHaveBeenLastCalledWith(expect.objectContaining({ voice: null })));
+
+    // speed 2 on TTS 1 → Flash shows it brought into 0.7–1.2 → back on TTS 1 it stays 1.2, not 2
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Recent" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Reuse «Fast/ }));
+    fireEvent.click(
+      within(await screen.findByRole("dialog", { name: "Replace your text?" })).getByRole("button", {
+        name: "Replace",
+      }),
+    );
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Settings" }));
+    expect(await screen.findByRole("slider", { name: "Speed" })).toHaveAttribute("aria-valuetext", "200%");
+    fireEvent.click(screen.getByRole("button", { name: "Model" }));
+    fireEvent.click(screen.getByRole("option", { name: /Flash v2/ }));
+    expect(screen.getByRole("slider", { name: "Speed" })).toHaveAttribute("aria-valuetext", "120%");
+    fireEvent.click(screen.getByRole("button", { name: "Model" }));
+    fireEvent.click(screen.getByRole("option", { name: /TTS 1/ }));
+    expect(screen.getByRole("slider", { name: "Speed" })).toHaveAttribute("aria-valuetext", "120%");
+  });
+
+  it("plays a new recording after an earlier one's file couldn't be played (R4)", async () => {
+    m.createRecording
+      .mockResolvedValueOnce(recording())
+      .mockResolvedValueOnce(
+        recording({ id: "01N0000000000000000000000B", url: "/api/audio/recordings/01N0000000000000000000000B/file" }),
+      );
+    await ready();
+    fireEvent.change(text(), { target: { value: "Hi" } });
+    fireEvent.click(generate());
+    const result = await screen.findByRole("region", { name: "Latest recording" });
+    fireEvent.error(result.querySelector("audio") as HTMLAudioElement);
+    expect(within(result).getByText("Audio unavailable")).toBeVisible();
+    fireEvent.click(generate());
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Latest recording" }).querySelector("audio")).toHaveAttribute(
+        "src",
+        "/api/audio/recordings/01N0000000000000000000000B/file",
+      ),
+    );
+  });
+
+  it("refreshes the balance after a failed generation too (R7)", async () => {
+    m.createRecording.mockRejectedValueOnce(new ApiError(502, "PROVIDER_ERROR", "did not answer"));
+    await ready();
+    await screen.findByText("$12.50");
+    fireEvent.change(text(), { target: { value: "Hi" } });
+    fireEvent.click(generate());
+    await screen.findByRole("alert");
+    await waitFor(() => expect(m.speechCredits).toHaveBeenCalledTimes(2));
+  });
+
+  it("shows the error of a generation that failed while the Owner was in another section (R10, AC-02)", async () => {
+    let fail: (e: Error) => void = () => {};
+    m.createRecording.mockImplementation(() => new Promise((_, rej) => (fail = rej)));
+    const other: Section = { id: "other", path: "/other", label: "Other", icon: Boxes, page: () => <p>Other page</p> };
+    const speech = SECTIONS.find((s) => s.id === "speech") as Section;
+    window.history.replaceState(null, "", "/audio/speech");
+    renderWithQuery(<App sections={[other, speech]} />);
+    await loaded();
+    fireEvent.change(text(), { target: { value: "Hello there" } });
+    fireEvent.click(generate());
+    const nav = () => screen.getByRole("navigation", { name: "Sections" });
+    fireEvent.click(within(nav()).getByRole("link", { name: "Other" }));
+    await waitFor(() => expect(m.createRecording).toHaveBeenCalledTimes(1)); // the request is under way
+    await act(async () => fail(new ApiError(502, "PROVIDER_ERROR", "Insufficient credits")));
+    fireEvent.click(within(nav()).getByRole("link", { name: "Speech" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Insufficient credits");
+    expect(text()).toHaveValue("Hello there");
+  });
+
+  it("keeps every id unique when the settings sheet is open (R12)", async () => {
+    await ready();
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    await screen.findByRole("dialog", { name: "Speech settings" });
+    const ids = [...document.querySelectorAll("[id]")].map((e) => e.id);
+    expect(ids.length).toBe(new Set(ids).size);
+    expect(screen.getAllByRole("button", { name: "Model", hidden: true })).toHaveLength(2); // one per panel, each labelled
   });
 });

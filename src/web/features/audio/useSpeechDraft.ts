@@ -1,12 +1,5 @@
 import { useState } from "react";
-import {
-  billedChars,
-  defaultSettings,
-  type Recording,
-  type SpeechModel,
-  settingsFor,
-  type VoiceSettings,
-} from "../../../shared/speech";
+import { billedChars, type Recording, type SpeechModel, settingsFor, type VoiceSettings } from "../../../shared/speech";
 
 export type Draft = ReturnType<typeof useSpeechDraft>;
 
@@ -38,15 +31,19 @@ export function useSpeechDraft(models: SpeechModel[] | undefined) {
     text,
     setText,
     model,
+    /** A voice the new model doesn't offer is dropped; settings are brought into its range (spec AC-08). */
     selectModel: (id: string) => {
+      const next = models?.find((m) => m.id === id);
       setModelId(id);
       setNotice(null);
+      if (!next) return;
+      if (next.voices.length === 0 || (chosenVoice && !next.voices.includes(chosenVoice))) setChosenVoice(undefined);
+      setRaw((prev) => settingsFor(next.controls, prev));
     },
     voice,
     setVoice: setChosenVoice,
     settings,
     setSettings: setRaw,
-    resetSettings: () => model && setRaw(defaultSettings(model.controls)),
     chars,
     tooLong: model ? chars > model.maxChars : false,
     notice,

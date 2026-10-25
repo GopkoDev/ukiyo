@@ -49,7 +49,12 @@ export function RecentRecordings(props: { draftText: string; onReuse: (r: Record
       <ul className="max-h-[70vh] space-y-3 overflow-y-auto">
         {recent.data.items.map((r) => (
           <li key={r.id} className="space-y-2 rounded-lg border p-3">
-            <button type="button" className="block w-full text-left" onClick={() => reuse(r)}>
+            <button
+              type="button"
+              className="block w-full text-left"
+              onClick={() => reuse(r)}
+              aria-label={`Reuse «${excerpt(r.text, 40)}»`}
+            >
               <span className="line-clamp-2">{excerpt(r.text, 140)}</span>
             </button>
             <span className="flex flex-wrap items-center gap-1.5 text-muted-foreground text-xs">
@@ -61,7 +66,7 @@ export function RecentRecordings(props: { draftText: string; onReuse: (r: Record
             <audio controls preload="none" src={r.url} className="h-8 w-full" />
             <div className="flex justify-end gap-1">
               <Button variant="ghost" size="sm" asChild>
-                <a href={`${r.url}?download=1`} download>
+                <a href={`${r.url}?download=1`} download aria-label={`Download «${excerpt(r.text, 40)}»`}>
                   <Download />
                   Download
                 </a>

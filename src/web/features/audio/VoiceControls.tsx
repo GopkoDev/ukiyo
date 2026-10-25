@@ -16,6 +16,8 @@ const nearestIndex = (v: number, steps: readonly number[]) =>
  * text), each with its own range and default (spec AC-07, AC-08). «Reset values» restores the model's defaults.
  */
 export function VoiceControls(props: {
+  /** Prefix for element ids — the page renders the controls in two panels (review R12). */
+  idPrefix?: string;
   controls: readonly Control[];
   settings: VoiceSettings;
   onChange: (settings: VoiceSettings) => void;
@@ -42,9 +44,9 @@ export function VoiceControls(props: {
         if (c.kind === "text")
           return (
             <div key={c.key} className="space-y-2">
-              <Label htmlFor={`speech-${c.key}`}>{c.label}</Label>
+              <Label htmlFor={`${props.idPrefix ?? "speech"}-${c.key}`}>{c.label}</Label>
               <Textarea
-                id={`speech-${c.key}`}
+                id={`${props.idPrefix ?? "speech"}-${c.key}`}
                 aria-label={c.label}
                 value={String(value(c))}
                 maxLength={c.maxLength}

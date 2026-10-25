@@ -32,6 +32,9 @@ describe("speech prices and costs", () => {
     expect(costText({ costStatus: "known", costMicros: 41_000, estimateMicros: 40_000 })).toBe("$0.041");
     expect(costText({ costStatus: "known", costMicros: 30, estimateMicros: null })).toBe("< $0.0001");
     expect(costText({ costStatus: "known", costMicros: 0, estimateMicros: 0 })).toBe("Free");
+    // a paid model whose provider reported 0 is not «Free» (review R3)
+    expect(costText({ costStatus: "known", costMicros: 0, estimateMicros: 880 })).toBe("$0.00");
+    expect(costText({ costStatus: "known", costMicros: 0, estimateMicros: null })).toBe("$0.00");
     expect(costText({ costStatus: "known", costMicros: 2_500_000, estimateMicros: null })).toBe("$2.50");
     expect(costText({ costStatus: "pending", costMicros: null, estimateMicros: 41_000 })).toBe(
       "cost pending · ≈ $0.041",

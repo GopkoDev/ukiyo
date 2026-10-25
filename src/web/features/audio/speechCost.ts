@@ -29,7 +29,11 @@ export function priceText(price: SpeechPrice): string {
 
 /** A recording's cost with its status, the estimate beside it while the real cost is unknown (spec AC-13). */
 export function costText(r: Pick<Recording, "costMicros" | "estimateMicros"> & { costStatus: CostStatus }): string {
-  if (r.costStatus === "known" && r.costMicros !== null) return r.costMicros === 0 ? "Free" : micros(r.costMicros);
+  if (r.costStatus === "known" && r.costMicros !== null) {
+    // «Free» only for a published zero price (estimate 0); a paid model reported at 0 reads $0.00 (review R3)
+    if (r.costMicros === 0) return r.estimateMicros === 0 ? "Free" : "$0.00";
+    return micros(r.costMicros);
+  }
   const estimate = r.estimateMicros !== null && r.estimateMicros > 0 ? ` · ≈ ${micros(r.estimateMicros)}` : "";
   return `cost ${r.costStatus}${estimate}`;
 }

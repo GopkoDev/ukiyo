@@ -44,11 +44,13 @@ function Panel({ children, footer, className }: { children: ReactNode; footer?: 
 }
 
 function SettingsTab({
+  idPrefix,
   draft,
   models,
   modelsError,
   onRetry,
 }: {
+  idPrefix: string;
   draft: Draft;
   models: SpeechModel[] | undefined;
   modelsError: string | null;
@@ -57,11 +59,11 @@ function SettingsTab({
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="speech-voice">Voice</Label>
-        <VoiceSelect id="speech-voice" model={draft.model} value={draft.voice} onChange={draft.setVoice} />
+        <Label htmlFor={`${idPrefix}-voice`}>Voice</Label>
+        <VoiceSelect id={`${idPrefix}-voice`} model={draft.model} value={draft.voice} onChange={draft.setVoice} />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="speech-model">Model</Label>
+        <Label htmlFor={`${idPrefix}-model`}>Model</Label>
         {modelsError ? (
           <p className="text-destructive text-xs">
             Couldn't load speech models — {modelsError}{" "}
@@ -70,14 +72,24 @@ function SettingsTab({
             </Button>
           </p>
         ) : (
-          <ModelSelect id="speech-model" models={models} value={draft.model?.id ?? ""} onChange={draft.selectModel} />
+          <ModelSelect
+            id={`${idPrefix}-model`}
+            models={models}
+            value={draft.model?.id ?? ""}
+            onChange={draft.selectModel}
+          />
         )}
       </div>
       <Separator />
       <div className="space-y-5">
         <h3 className="font-semibold text-sm">Voice adjustment</h3>
         {draft.model && (
-          <VoiceControls controls={draft.model.controls} settings={draft.settings} onChange={draft.setSettings} />
+          <VoiceControls
+            idPrefix={idPrefix}
+            controls={draft.model.controls}
+            settings={draft.settings}
+            onChange={draft.setSettings}
+          />
         )}
       </div>
     </div>
@@ -91,6 +103,16 @@ export function SpeechPage() {
   const credits = useQuery({ queryKey: CREDITS_KEY, queryFn: api.speechCredits, retry: false });
   const draft = useSpeechDraft(models.data?.models);
   const [result, setResult] = useState<{ recording: Recording; fresh: boolean } | null>(null);
+  // The latest result is read back while its cost is pending, so it settles without a reload (spec AC-13, review R1).
+  const latest = useQuery({
+    queryKey: ["recording", result?.recording.id],
+    queryFn: () => api.recording(result?.recording.id ?? ""),
+    enabled: result !== null,
+    initialData: result?.recording,
+    staleTime: Number.POSITIVE_INFINITY,
+    refetchInterval: (q) => (q.state.data?.costStatus === "pending" ? 10_000 : false),
+  });
+  const shown = result ? (latest.data ?? result.recording) : null;
 
   // One Owner action sends one paid request (AC-17): the pending flag updates asynchronously, this ref at once.
   const inFlight = useRef(false);
@@ -98,11 +120,12 @@ export function SpeechPage() {
     mutationFn: (body: Parameters<typeof api.createRecording>[0]) => api.createRecording(body),
     onSettled: () => {
       inFlight.current = false;
+      // A failed or timed-out request may still be billed: the balance shows it (spec §6.1, review R7).
+      queryClient.invalidateQueries({ queryKey: CREDITS_KEY });
     },
     onSuccess: (recording) => {
       setResult({ recording, fresh: true });
       queryClient.invalidateQueries({ queryKey: RECORDINGS_KEY });
-      queryClient.invalidateQueries({ queryKey: CREDITS_KEY });
     },
   });
 
@@ -117,7 +140,7 @@ export function SpeechPage() {
   const estimate = model ? estimateText(model.price, draft.chars) : null;
   const maxChars = model?.maxChars ?? 5000;
 
-  const side = (
+  const side = (idPrefix: string) => (
     <Tabs defaultValue="settings" className="gap-4">
       <TabsList className="w-full">
         <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -125,6 +148,7 @@ export function SpeechPage() {
       </TabsList>
       <TabsContent value="settings">
         <SettingsTab
+          idPrefix={idPrefix}
           draft={draft}
           models={models.data?.models}
           modelsError={models.isError ? errorText(models.error) : null}
@@ -164,7 +188,7 @@ export function SpeechPage() {
                 Voice, model, voice adjustment and recent recordings
               </SheetDescription>
             </SheetHeader>
-            <div className="px-4 pb-4">{side}</div>
+            <div className="px-4 pb-4">{side("speech-sheet")}</div>
           </SheetContent>
         </Sheet>
       </div>
@@ -222,13 +246,13 @@ export function SpeechPage() {
               {errorText(generate.error)}
             </p>
           )}
-          {result && (
+          {result && shown && (
             <Panel>
-              <SpeechResult recording={result.recording} autoPlay={result.fresh} />
+              <SpeechResult key={shown.id} recording={shown} autoPlay={result.fresh} />
             </Panel>
           )}
         </div>
-        <Panel className="hidden lg:block">{side}</Panel>
+        <Panel className="hidden lg:block">{side("speech-panel")}</Panel>
       </div>
     </section>
   );

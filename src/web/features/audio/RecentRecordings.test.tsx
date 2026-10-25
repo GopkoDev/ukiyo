@@ -44,11 +44,15 @@ describe("Recent recordings (SCR-04)", () => {
     expect(m.recordings).toHaveBeenCalledWith(undefined, 10);
     expect(items).toHaveLength(2);
     const first = items[0] as HTMLElement;
-    expect(within(first).getByRole("button", { name: /Recording number 2/ })).toBeVisible();
+    expect(within(first).getByRole("button", { name: /^Reuse «Recording number 2/ })).toBeVisible();
     expect(first).toHaveTextContent("George · Eleven v3 · 2 min ago");
     expect(within(first).getByText("$0.0024")).toBeVisible();
     expect(first.querySelector("audio")).toHaveAttribute("src", rec(2).url);
-    expect(within(first).getByRole("link", { name: "Download" })).toHaveAttribute("href", `${rec(2).url}?download=1`);
+    expect(within(first).getByRole("link", { name: /^Download «Recording number 2/ })).toHaveAttribute(
+      "href",
+      `${rec(2).url}?download=1`,
+    );
+    expect(within(first).getByRole("button", { name: /^Delete recording «Recording number 2/ })).toBeVisible();
   });
 
   it("shows loading, empty and error states, with Try again", async () => {
@@ -82,19 +86,19 @@ describe("Recent recordings (SCR-04)", () => {
   it("reuses a recording at once when the form holds no different text, and asks first otherwise", async () => {
     const onReuse = vi.fn();
     const { rerender, client } = renderWithQuery(<RecentRecordings draftText="" onReuse={onReuse} />);
-    fireEvent.click(await screen.findByRole("button", { name: /Recording number 2/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Reuse «Recording number 2/ }));
     expect(onReuse).toHaveBeenCalledWith(expect.objectContaining({ id: rec(2).id }));
     rerender(
       <QueryClientProvider client={client}>
         <RecentRecordings draftText="My unsent text" onReuse={onReuse} />
       </QueryClientProvider>,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Recording number 1/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Reuse «Recording number 1/ }));
     const dialog = await screen.findByRole("dialog", { name: "Replace your text?" });
     expect(within(dialog).getByRole("button", { name: "Keep mine" })).toHaveFocus();
     fireEvent.click(within(dialog).getByRole("button", { name: "Keep mine" }));
     expect(onReuse).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole("button", { name: /Recording number 1/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Reuse «Recording number 1/ }));
     fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Replace" }));
     expect(onReuse).toHaveBeenLastCalledWith(expect.objectContaining({ id: rec(1).id }));
   });

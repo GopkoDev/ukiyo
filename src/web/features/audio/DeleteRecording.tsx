@@ -49,7 +49,7 @@ export function DeleteRecording({ recording }: { recording: Recording }) {
           del.reset();
           setOpen(true);
         }}
-        aria-label="Delete recording"
+        aria-label={`Delete recording «${excerpt(recording.text, 40)}»`}
       >
         <Trash2 aria-hidden />
       </Button>
