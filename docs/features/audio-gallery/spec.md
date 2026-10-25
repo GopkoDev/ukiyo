@@ -86,9 +86,9 @@ Committed approach: a new «Gallery» section in the Audio group that mirrors th
 - a player that plays the recording in place;
 - its cost with its status, the estimate beside it when the cost isn't known (as on the Speech page);
 - how long the request took;
-- the first lines of its text;
+- the first two lines of its text;
 - its model's name and its voice;
-- the settings it was made with, as short labels (for example «speed 1.1», «stability 0.5», «instructions»);
+- every setting it was made with (defaults included, since a recording keeps all it sent), as short labels (for example «speed 1.1», «stability 0.5», «speaker boost», «instructions» for delivery instructions);
 - its first three tags (with «+N» for more), and a marker when it has a comment;
 - how long ago it was made.
 
@@ -98,19 +98,19 @@ The grid shows the first page. More cards load as the Owner scrolls near the end
 
 **Given** one card's player is playing
 **When** the Owner starts another card's player (in the grid, the dialog or the Speech page)
-**Then** the first one pauses, so at most one recording plays at a time anywhere in Ukiyo. Moving to another section pauses what was playing on the section left behind. A recording that finishes generating while the Owner is outside the Speech page does not start playing by itself. A player loads its audio only when the Owner starts it, not when the card appears, and a card's cost refreshing never restarts or interrupts its player.
+**Then** the first one pauses where it was (playing it again resumes there), so at most one recording plays at a time in the Ukiyo tab. Opening a recording's dialog pauses a playing card; closing the dialog stops the dialog's player. Moving to another section pauses what was playing on the section left behind. A recording that finishes generating while the Owner is outside the Speech page does not start playing by itself. A player loads its audio only when the Owner starts it, not when the card appears, and a card's cost refreshing never restarts or interrupts its player.
 
 ### AC-03 (US-01) — error
 
 **Given** the gallery can't be read, a further page can't be read, or a recording's audio file can't be played
 **When** the Owner opens or scrolls the gallery
-**Then** the page says what failed in plain words, with a retry: «Couldn't load the gallery» with Retry when nothing is shown; «Couldn't load more» with Try again under the cards already shown, with no automatic retry. A card whose audio won't play says «Audio unavailable» in place of the player, and its other details stay visible. With no recordings at all, the page says «No recordings yet» and offers a way to the Speech page.
+**Then** the page says what failed in plain words, with a retry: «Couldn't load the gallery» with Retry when nothing is shown; «Couldn't load more» with Try again under the cards already shown, with no automatic retry. A card whose audio won't play (found when the Owner tries to play it) says «Audio unavailable» in place of the player, and its other details stay visible. With no recordings at all, the page says «No recordings yet» and offers a way to the Speech page.
 
 ### AC-04 (US-01) — domain invariant
 
 **Given** a card's cost is pending
 **When** the provider reports the charge, or Ukiyo gives up waiting
-**Then** that card changes to the known amount, or to «cost unavailable» with its estimate, without a reload and without re-reading every loaded page. An unknown cost never shows as $0. Recordings kept from the prototype show their amount as the cost.
+**Then** within 10 seconds that recording's card in every view on screen, its open dialog or page, changes to the known amount, or to «cost unavailable» with its estimate, without a reload and without re-reading every loaded page. An unknown cost never shows as $0. Recordings kept from the prototype show their amount as the cost.
 
 ### AC-05 (US-02) — happy path
 
@@ -131,13 +131,13 @@ Newer and Older step through the grid's order as loaded, also with ← and →. 
 
 **Given** the Owner has the address of one recording
 **When** the Owner opens it directly (pasted, reloaded or in a new tab)
-**Then** the recording shows on its own page under the audio gallery, with a way back to the gallery, the same details and actions as the dialog, and no stepping. If it can't be read, the page or dialog says «Couldn't load this recording» with Try again. If the recording no longer exists, the page or the dialog says «This recording no longer exists» instead of an error, and tagging, commenting or deleting it changes nothing. After a deletion in the dialog, Back never returns to the deleted recording. A recording's address never opens an image generation, and a generation's address never opens a recording. The image gallery's own addresses and detail pages keep working as before.
+**Then** the recording shows on its own page under the audio gallery, with a way back to the gallery's «All» view (the address names the recording, not the view it was opened from), the same details and actions as the dialog, and no stepping. If it can't be read, the page or dialog says «Couldn't load this recording» with Try again. If the recording no longer exists, the page or the dialog says «This recording no longer exists» instead of an error, and tagging, commenting or deleting it changes nothing. After a deletion in the dialog, Back never returns to the deleted recording. A recording's address never opens an image generation, and a generation's address never opens a recording. The image gallery's own addresses and detail pages keep working as before.
 
 ### AC-07 (US-03) — happy path
 
 **Given** a recording is shown in its dialog or page
 **When** the Owner adds a tag, removes a tag, or writes and saves a comment
-**Then** the change is kept. The tag shows on the recording and on its card at once, without a reload, and the card shows a comment marker once a comment is saved. A tag is trimmed, inner spaces are collapsed and it is lower-cased; adding one it already has changes nothing. The comment is edited with an explicit Save or Cancel, and the last save wins; saving an empty or whitespace-only comment removes it. The comment is kept exactly as written; tags are listed in the order they were added. Lengths count the characters the Owner sees, and any alphabet's letters are allowed. Tags and comments are always shown as plain text, never as markup — exactly the rules of image generations' notes (curate-gallery).
+**Then** the change is kept. The tag shows on the recording and on its card in every view where it appears at once, without a reload, and the card shows a comment marker once a comment is saved. A tag is trimmed, inner spaces are collapsed and it is lower-cased; adding one it already has changes nothing. The comment is edited with an explicit Save or Cancel, and the last save wins; saving an empty or whitespace-only comment removes it. The comment is kept exactly as written; tags are listed in the order they were added. Lengths count the characters the Owner sees, and any alphabet's letters are allowed. Tags and comments are always shown as plain text, never as markup — exactly the rules of image generations' notes (curate-gallery).
 
 ### AC-08 (US-03) — error
 
@@ -149,7 +149,7 @@ Newer and Older step through the grid's order as loaded, also with ← and →. 
 
 **Given** the dialog has an unsaved comment edit, typed tag text that isn't added, or an open delete confirmation
 **When** the Owner tries to step to a neighbour
-**Then** stepping is unavailable, with the reason «Save or cancel your changes first». Esc first cancels an open comment edit, and closes the dialog only on the next press. Esc likewise closes an open delete confirmation before the dialog. Inside a text field, ← and → move the cursor and never step. While the dialog's player has the keyboard focus, ← and → belong to the player and never step. Stepping to a neighbour stops the current playback.
+**Then** stepping is unavailable, with the reason «Save or cancel your changes first». Esc first cancels an open comment edit, and closes the dialog only on the next press. Esc likewise closes an open delete confirmation before the dialog. Close, Back and Reuse are not blocked: as in the image dialog, they leave the recording and drop an unsaved comment edit or typed tag text. Nothing typed for one recording can ever apply to another. Inside a text field, ← and → move the cursor and never step. While the dialog's player has the keyboard focus, ← and → belong to the player and never step. Stepping to a neighbour stops the current playback.
 
 ### AC-10 (US-03) — cross-context
 
@@ -172,14 +172,14 @@ Newer and Older step through the grid's order as loaded, also with ← and →. 
 ### AC-13 (US-05) — happy path
 
 **Given** recordings were made with several speech models
-**When** the Owner chooses one model from the gallery's model choice, which lists every model that has recordings with its count, the most recently used first
+**When** the Owner chooses one model from the gallery's model choice, which lists every model that has recordings with its count, ordered by each model's newest stored recording
 **Then** the grid shows only that model's recordings, newest first, with the same paging. A heading names the model with its count and offers «Show all recordings». Stepping in a dialog opened from this grid stays within the model. The view is kept in the address, so Back, a reload or a shared address shows the same view. Each view keeps its own scroll position; «Show all» starts at the top. Choosing Gallery in the navigation opens «All». If the model choice or «By model» can't be read, it says so with Try again.
 
 ### AC-14 (US-05) — happy path
 
 **Given** recordings were made with several speech models
 **When** the Owner chooses «By model»
-**Then** the page shows one section per model, the most recent first. Each section has the model's name, its count, its four latest cards, and «Show all N», which opens that model's grid. A card opened from a section steps within that model. A model no longer offered still has its section under the name it was recorded with. A model's name is the same in the model choice, the headings, the cards and the dialog: the name recorded with the recording, else the name the speech catalog gives it, else its model id. The gallery stays usable when the speech catalog can't be reached.
+**Then** the page shows one section per model, ordered by each model's newest stored recording. Each section has the model's name, its count, its four latest cards, and «Show all N», which opens that model's grid. A card opened from a section or from a model's grid steps through all of that model's recordings, newest first (loading more at the end, not only the four shown); the view behind the dialog does not change. Closing returns to the view it was opened from: a model's grid brings the last shown card into view, «By model» returns to the section unchanged. Deleting moves to the neighbour in that model's order; when it was the model's last recording, the dialog closes onto the view, where the model's grid shows «No recordings with <model>» and the «By model» section is gone. A model no longer offered still has its section under the name it was recorded with. Recordings are grouped and matched by their exact model id. A model has one display name, the same in the model choice, the headings, the cards and the dialog: the name stored with its newest recording that has one, else the name the speech catalog gives it, else its model id. The gallery stays usable when the speech catalog can't be reached.
 
 ### AC-15 (US-05) — error
 
@@ -203,7 +203,7 @@ Newer and Older step through the grid's order as loaded, also with ← and →. 
 
 **Given** the Owner generates a recording on the Speech page, deletes one there or in the gallery, or curates one in the gallery
 **When** the Owner moves between the Speech page and the audio gallery
-**Then** both show the same recordings: a new recording is first in the gallery, and a deleted one is in neither — a deletion on the Speech page also removes its tags and comment, and drops its card from the grid, the model views and their counts. The image gallery, its model views and the recent generations next to the Generate form never show recordings, and the audio gallery never shows image generations.
+**Then** both show the same recordings: a new recording is first in the gallery — also when it finishes while the gallery is on screen, where it appears first in every open view at once — and a deleted one is in neither — a deletion on the Speech page also removes its tags and comment, and drops its card from the grid, the model views and their counts. The image gallery, its model views and the recent generations next to the Generate form never show recordings, and the audio gallery never shows image generations.
 
 ### AC-19 (US-01, US-03, US-04) — authorization
 
@@ -232,7 +232,7 @@ Newer and Older step through the grid's order as loaded, also with ← and →. 
 | Tag / comment save | ≤ 100 ms p95 server time | `nfr` integration test |
 | Delete | recording + file + tags + comment ≤ 300 ms p95 server time; after a failed or interrupted deletion the recording is either fully present or fully gone | integration test with a failing file step |
 | Requests while browsing | ≤ 1 request per page; none while one is in flight or after the last; a dialog step costs ≤ 1 recording read and 0 for one already read; a tag or comment change costs 0 list-page reads | component test counting requests |
-| Pending cost on cards | refreshed by asking only for the pending recordings, not every loaded page, at most every 10 s | component test counting requests |
+| Pending cost on cards | a settled cost shows on every visible card, dialog and page within 10 s; refreshed by asking only for the pending recordings, not every loaded page, at most once every 10 s | component test counting requests |
 | Audio loading | 0 audio bytes fetched for cards the Owner hasn't played | component test (player preload) |
 | Image gallery unchanged | every existing image gallery, dialog, curation, model and prompt view test passes with no change to what it expects | the existing `web` and `integration` suites, run before and after the extraction |
 | Catalog independence | the targets above hold with the speech catalog unreachable or hanging | `nfr` test with a hanging fake catalog |
