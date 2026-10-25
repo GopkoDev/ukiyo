@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import type { Recording } from "../../../../shared/speech";
 import { CostLabel } from "../CostLabel";
 import { DeleteRecording } from "../DeleteRecording";
+import { presetPath } from "../presets/queries";
 import { voiceDot, voiceLabel } from "../VoiceSelect";
 import { AUDIO_GALLERY_PATH } from "./audioGalleryView";
 import { useRecording } from "./queries";
@@ -83,6 +84,13 @@ export function RecordingBody({ r, layout }: { r: Recording; layout: "dialog" | 
               {voiceLabel(r.voice)}
             </span>
           </Row>
+          {r.preset && (
+            <Row label="Voice preset">
+              <Link to={presetPath(r.preset.id)} className="underline-offset-4 hover:underline">
+                {r.preset.name}
+              </Link>
+            </Row>
+          )}
           <Row label="Settings">{labels.length ? labels.join(" · ") : "none"}</Row>
           {r.settings.instructions && (
             <Row label="Instructions">

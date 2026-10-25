@@ -123,7 +123,7 @@
         "src/web/features/audio/presets/Voices.test.tsx"
       ],
       "file": "docs/features/voice-presets/tasks/T8-voices-list-preset-page-and-recording-preset-row.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T9",

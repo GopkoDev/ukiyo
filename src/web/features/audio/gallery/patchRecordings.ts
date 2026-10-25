@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { Recording } from "../../../../shared/speech";
+import { refreshPresetStats } from "../presets/queries";
 import { RECORDINGS_KEY } from "../queryKeys";
 
 type Page = { items: Recording[]; nextCursor: string | null };
@@ -52,8 +53,10 @@ export function patchRecordings(qc: QueryClient, id: string, patch: Partial<Reco
     }
   }
   // The detail entry itself is dropped by the caller once nothing observes it any more (review R4).
-  if (patch === "remove") deleted.dispatchEvent(new CustomEvent("deleted", { detail: id }));
-  else qc.setQueryData<Recording>(["recording", id], (old) => (old ? { ...old, ...patch } : old));
+  if (patch === "remove") {
+    deleted.dispatchEvent(new CustomEvent("deleted", { detail: id }));
+    refreshPresetStats(qc); // its preset's count, total and last use follow (voice-presets AC-16)
+  } else qc.setQueryData<Recording>(["recording", id], (old) => (old ? { ...old, ...patch } : old));
 }
 
 function findCached(qc: QueryClient, id: string): Recording | undefined {

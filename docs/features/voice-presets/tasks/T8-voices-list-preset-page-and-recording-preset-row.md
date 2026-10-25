@@ -9,8 +9,8 @@ files_hint: ["src/web/features/audio/presets/", "src/web/features/audio/gallery/
 owner: "dmytro.hopko"
 estimate: "M"
 context_budget: "L"   # justified: one screen family; the ACs share one state machine
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T8 — Voices list, preset page and the recording's preset row
