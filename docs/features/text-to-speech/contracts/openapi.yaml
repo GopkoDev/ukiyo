@@ -219,7 +219,7 @@ components:
         createdAt: { type: string, format: date-time }
         provider: { type: string }
         model: { type: string }
-        modelName: { type: string, description: "stored catalog name, else family spec name, else the id" }
+        modelName: { type: string, description: "stored catalog name, else the current catalog name, else the id" }
         voice: { type: [string, "null"], description: "null = provider default" }
         text: { type: string }
         settings: { $ref: "#/components/schemas/VoiceSettings" }

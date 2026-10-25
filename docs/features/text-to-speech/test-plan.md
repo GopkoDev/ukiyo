@@ -46,7 +46,7 @@ Levels: unit · integration · component · contract · load (+ e2e-through-UI).
 | AC-14 | the credit balance refreshes after a generation | component |
 | AC-14 | recordings never appear in the generations list, the recent generations or the image cost history | integration |
 | AC-15 | Recent lists the ten latest newest first, each with player, excerpt, voice, model, time, cost, download; reuse fills the form; differing unsent text asks first; a model no longer offered keeps the current model and fills the text and accepted settings | component |
-| AC-15 | the list returns the ten latest with model name (fallback to the spec name / id) and paging cursor | integration |
+| AC-15 | the list returns the ten latest with model name (fallback to the catalog name / id) and paging cursor | integration |
 | AC-16 | delete removes the row and the file together; a failed delete transaction restores the file and keeps the row; an interrupted delete is restored on restart; the pending lookup is cancelled | integration |
 | AC-16 | the delete confirmation, the busy state and the failure message | component |
 | AC-17 | the generate button stays disabled while a request is in flight, also after navigating away and back; one click sends one request | component |

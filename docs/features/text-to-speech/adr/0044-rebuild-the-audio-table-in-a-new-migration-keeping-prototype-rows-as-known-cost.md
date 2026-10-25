@@ -25,7 +25,7 @@ ticket: "roadmap step 18"
 
 ## Considered options
 
-1. **Migration `0012_rebuild_audio_generations`** — create a new table with `provider`, `model_name` (nullable; the catalog name at save time, so a retired model still shows its name — spec AC-15; prototype rows get NULL and display falls back to the family spec name, then the id), nullable `voice`, `cost_status` (+ the 0002-style CHECK), `estimate_micros` and `duration_ms`, copy the rows across (`provider = 'openrouter'`, `cost_status = CASE WHEN cost_micros IS NULL THEN 'unavailable' ELSE 'known' END`, `estimate_micros = NULL`), drop the old table and rename. Add the partial pending index. `down` rebuilds the 0011 shape (rows without a voice get the voice `'default'`).
+1. **Migration `0012_rebuild_audio_generations`** — create a new table with `provider`, `model_name` (nullable; the catalog name at save time, so a retired model still shows its name — spec AC-15; prototype rows get NULL and display falls back to the catalog name, then the id), nullable `voice`, `cost_status` (+ the 0002-style CHECK), `estimate_micros` and `duration_ms`, copy the rows across (`provider = 'openrouter'`, `cost_status = CASE WHEN cost_micros IS NULL THEN 'unavailable' ELSE 'known' END`, `estimate_micros = NULL`), drop the old table and rename. Add the partial pending index. `down` rebuilds the 0011 shape (rows without a voice get the voice `'default'`).
 2. **`ALTER TABLE ADD COLUMN` only** — no rebuild, but the voice stays NOT NULL, so «provider default» needs a magic string forever, and no CHECK can tie the status to the amount.
 3. **A new table `recordings`, leaving `audio_generations` behind** — a clean name, but two tables hold the same kind of thing, or a copy-and-drop happens anyway.
 

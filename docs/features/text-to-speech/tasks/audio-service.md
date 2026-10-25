@@ -46,7 +46,7 @@ This task delivers: service integration tests with a fake SpeechProvider prove e
 >
 > — `sad.md §6 flow 3, abridged`
 
-> **Model name:** the catalog name stored with the recording (`model_name`); prototype rows fall back to the family spec name, then the model id
+> **Model name:** the catalog name stored with the recording (`model_name`); prototype rows fall back to the catalog name, then the model id
 >
 > — `sad.md §8, Model display name, verbatim`
 

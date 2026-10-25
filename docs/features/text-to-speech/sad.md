@@ -368,7 +368,7 @@ Flagged: flows 1–2 (drawn in design) name §5 building blocks rather than gene
 | IDs | ULID `newId(now)` minted when the answer arrives; `ORDER BY id DESC` | `src/server/lib/ids.ts` |
 | Money | `cost_micros` + `cost_status` with the 0002-style CHECK, plus `estimate_micros` (nullable, labelled estimate) | ADR-0043, ADR-0044 |
 | Billed characters | `billedChars(text) = [...text.trim()].length` (code points of the trimmed text), one function in `src/shared/audio.ts` used by the counter, the server check, the estimate and the stored count | spec AC-11 |
-| Model display name | the catalog name stored with the recording (`model_name`); prototype rows fall back to the family spec name, then the model id (spec AC-15) | ADR-0044 |
+| Model display name | the catalog name stored with the recording (`model_name`); prototype rows fall back to the catalog name, then the model id (spec AC-15) | ADR-0044 |
 | Display of amounts | `formatUsdSig(micros)`: two significant digits; a non-zero amount below $0.0001 shows «< $0.0001»; 0 shows «Free» only for a published zero price | `src/web/lib/format.ts` (new helper) |
 | Caching | speech catalog cached 10 min per provider in `speech-catalog.ts` (same TTL as images, `CATALOG_TTL_MS`); the web keeps it 10 min | ADR-0039 |
 | Timeouts | speech request timeout injected via `AppDeps.generationTimeoutMs` (default 180 s); cost lookup 30 s each (cost-sync) | `src/server/app.ts` |

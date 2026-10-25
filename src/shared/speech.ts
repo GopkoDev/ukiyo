@@ -77,7 +77,7 @@ export const Recording = z.object({
   createdAt: z.string(),
   provider: z.string(),
   model: z.string(),
-  /** The catalog name at save time, else the family spec's, else the id — a retired model still shows a name. */
+  /** The catalog name at save time, else the current catalog's, else the id — a retired model still shows a name. */
   modelName: z.string(),
   /** `null` = the provider's default voice. */
   voice: z.string().nullable(),

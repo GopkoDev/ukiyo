@@ -54,7 +54,7 @@ erDiagram
 | id | TEXT | no | PK, ULID minted when the answer arrives | — |
 | provider | TEXT | no | 1–32 chars; `'openrouter'` | new (prototype rows: `'openrouter'`) |
 | model | TEXT | no | 1–100 chars, provider model id | — |
-| model_name | TEXT | yes | 1–200 chars, catalog name at save time (AC-15); NULL = prototype row → display falls back to the family spec name, then the id | new |
+| model_name | TEXT | yes | 1–200 chars, catalog name at save time (AC-15); NULL = prototype row → display falls back to the catalog name, then the id | new |
 | voice | TEXT | yes | 1–100 chars; NULL = provider default voice (AC-09) | NOT NULL → nullable |
 | text | TEXT | no | `length(trim(text)) > 0` | CHECK tightened (prototype texts are trimmed — verified on the copy) |
 | settings | TEXT | no | JSON: only the settings sent, incl. `instructions` | — |
