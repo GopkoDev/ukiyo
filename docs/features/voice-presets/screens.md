@@ -31,7 +31,7 @@ Voice preset
 | empty | list: «No voice presets yet — set up a voice and press Save.» | AC-01 |
 | error | list: «Couldn't load your voices.» + Try again; generating still works | AC-19 |
 | no longer offered | row badge «No longer offered», picking it shows «<model name> is no longer offered» under the row | AC-09 |
-| catalog not loaded | rows listed, not pickable, note «Loading models…» | AC-09 |
+| catalog not loaded | rows listed, not pickable, note «Loading models…»; when the model list failed: «Couldn't load the speech models.» (a `?preset=` handover: «Couldn't load the speech models — the voice preset wasn't applied.») | AC-09, review R4 |
 | notice | «Wait for the current recording to finish, then apply.» / «This voice no longer exists.» (the page's notice line) | AC-14 |
 
 ## SCR-02 — Save dialog
