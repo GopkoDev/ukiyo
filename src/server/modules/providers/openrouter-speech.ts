@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { CreditsResponse, SpeechModel } from "../../../shared/speech";
+import type { SpeechModel } from "../../../shared/speech";
 import {
   displayName,
   formatFor,
@@ -28,7 +28,6 @@ const Catalog = z.looseObject({
     }),
   ),
 });
-const Credits = z.looseObject({ data: z.looseObject({ total_credits: z.number(), total_usage: z.number() }) });
 const Lookup = z.looseObject({ data: z.looseObject({ total_cost: z.unknown() }) });
 const ErrorBody = z.looseObject({
   error: z.looseObject({
@@ -135,16 +134,6 @@ export function createOpenRouterSpeech(opts: { apiKey: string | undefined; fetch
         costUsd: null, // the speech answer is raw audio — it never states a price
         costRef: res.headers.get("x-generation-id"),
       };
-    },
-
-    async credits(signal): Promise<CreditsResponse> {
-      try {
-        const { data } = Credits.parse(await (await call("/credits", { signal })).json());
-        return { remainingUsd: data.total_credits - data.total_usage };
-      } catch (err) {
-        if (err instanceof ProviderError && err.upstreamStatus === null && !opts.apiKey) throw err;
-        return null;
-      }
     },
 
     /** One price lookup (ADR-0043). Not found yet, throttling, server or network trouble → try again later. */

@@ -14,7 +14,8 @@ vi.mock("@/lib/api", async (orig) => ({
   api: {
     health: vi.fn(async () => ({ status: "ok" })),
     speechModels: vi.fn(),
-    speechCredits: vi.fn(),
+    providers: vi.fn(),
+    providerBalance: vi.fn(),
     recordings: vi.fn(),
     createRecording: vi.fn(),
     deleteRecording: vi.fn(),
@@ -62,7 +63,8 @@ const recording = (over: Partial<Recording> = {}): Recording => ({
 
 beforeEach(() => {
   m.speechModels.mockResolvedValue({ models: [V3, FISH], fetchedAt: "2026-10-25T10:00:00.000Z" });
-  m.speechCredits.mockResolvedValue({ remainingUsd: 12.5 });
+  m.providers.mockResolvedValue({ providers: [{ id: "openrouter", name: "OpenRouter", configured: true }] });
+  m.providerBalance.mockResolvedValue({ provider: "openrouter", remainingUsd: 12.5 });
   m.recordings.mockResolvedValue({ items: [], nextCursor: null });
   vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
 });
@@ -106,7 +108,7 @@ describe("Speech page — compose (SCR-02)", () => {
   });
 
   it("says how to configure OpenRouter and disables generating when it isn't configured", async () => {
-    m.speechCredits.mockRejectedValue(new ApiError(409, "PROVIDER_NOT_CONFIGURED", "not configured"));
+    m.providers.mockResolvedValue({ providers: [{ id: "openrouter", name: "OpenRouter", configured: false }] });
     await ready();
     fireEvent.change(text(), { target: { value: "Hi" } });
     expect(
@@ -163,7 +165,7 @@ describe("Speech page — generate", () => {
     const player = result.querySelector("audio");
     expect(player).toHaveAttribute("src", "/api/audio/recordings/01N0000000000000000000000A/file");
     expect(player?.autoplay).toBe(true);
-    await waitFor(() => expect(m.speechCredits).toHaveBeenCalledTimes(2)); // balance refreshed (AC-14)
+    await waitFor(() => expect(m.providerBalance).toHaveBeenCalledTimes(2)); // balance refreshed (AC-14)
   });
 
   it("sends no voice for the provider default of a model without listed voices", async () => {
@@ -384,7 +386,7 @@ describe("Speech page — review fixes", () => {
     fireEvent.change(text(), { target: { value: "Hi" } });
     fireEvent.click(generate());
     await screen.findByRole("alert");
-    await waitFor(() => expect(m.speechCredits).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(m.providerBalance).toHaveBeenCalledTimes(2));
   });
 
   it("shows the error of a generation that failed while the Owner was in another section (R10, AC-02)", async () => {

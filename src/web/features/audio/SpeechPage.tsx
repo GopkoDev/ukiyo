@@ -11,10 +11,11 @@ import { ApiError, api } from "@/lib/api";
 import { replace, useRoute } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import type { Recording, SpeechModel } from "../../../shared/speech";
+import { balanceText, refreshBalances, useProviderBalance, useProviders } from "../balances/balances";
 import { onRecordingDeleted } from "./gallery/patchRecordings";
 import { SPEECH_PATH } from "./gallery/reuse";
 import { limitText, ModelSelect } from "./ModelSelect";
-import { SPEECH_CREDITS_KEY as CREDITS_KEY, SPEECH_MODELS_KEY as MODELS_KEY, RECORDINGS_KEY } from "./queryKeys";
+import { SPEECH_MODELS_KEY as MODELS_KEY, RECORDINGS_KEY } from "./queryKeys";
 import { RecentRecordings } from "./RecentRecordings";
 import { ReplaceTextDialog } from "./ReplaceTextDialog";
 import { SpeechResult } from "./SpeechResult";
@@ -104,7 +105,10 @@ function SettingsTab({
 export function SpeechPage() {
   const queryClient = useQueryClient();
   const models = useQuery({ queryKey: MODELS_KEY, queryFn: api.speechModels, staleTime: 10 * 60_000, retry: false });
-  const credits = useQuery({ queryKey: CREDITS_KEY, queryFn: api.speechCredits, retry: false });
+  // OpenRouter's balance — the same cache entry as the navigation bar (ADR-0055); «not configured» from the providers list.
+  const providers = useProviders();
+  const openRouter = providers.data?.providers.find((p) => p.id === "openrouter");
+  const credits = useProviderBalance("openrouter", openRouter?.configured === true);
   const draft = useSpeechDraft(models.data?.models);
   const [result, setResult] = useState<{ recording: Recording; fresh: boolean } | null>(null);
   const rootRef = useRef<HTMLElement>(null);
@@ -128,7 +132,7 @@ export function SpeechPage() {
     onSettled: () => {
       inFlight.current = false;
       // A failed or timed-out request may still be billed: the balance shows it (spec §6.1, review R7).
-      queryClient.invalidateQueries({ queryKey: CREDITS_KEY });
+      refreshBalances(queryClient);
     },
     onSuccess: (recording) => {
       // A result that arrives while the Owner is on another section never starts playing by itself (ADR-0050).
@@ -189,7 +193,7 @@ export function SpeechPage() {
     else applyReuse(r);
   }, [reuseId, reuseRec.data, reuseRec.isError, reuseRec.isFetching, models.data]);
 
-  const unconfigured = notConfigured(credits.error);
+  const unconfigured = openRouter?.configured === false;
   const model = draft.model;
   const canGenerate = !!model && draft.chars > 0 && !draft.tooLong && !unconfigured && !generate.isPending;
   const submit = () => {
@@ -274,10 +278,10 @@ export function SpeechPage() {
             footer={
               <>
                 <span className="flex items-center gap-2 text-muted-foreground text-sm">
-                  {credits.data && (
+                  {openRouter?.configured && (
                     <>
                       <Coins className="size-4" aria-hidden />
-                      <span className="tabular-nums">${credits.data.remainingUsd.toFixed(2)}</span> credits remaining
+                      <span className="tabular-nums">{balanceText(credits)}</span> credits remaining
                     </>
                   )}
                 </span>

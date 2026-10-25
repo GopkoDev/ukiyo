@@ -98,6 +98,8 @@ function fromDataUrl(url: string): Uint8Array {
   return m?.[1] ? new Uint8Array(Buffer.from(m[1], "base64")) : new Uint8Array();
 }
 
+const Credits = z.looseObject({ balance: z.union([z.string(), z.number()]) });
+
 export function createVercelProvider(opts: { apiKey: string | undefined; fetch: typeof fetch }): ImageProvider {
   const fail = (status: number | null, message: string) => new ProviderError("vercel", status, message);
   const kinds = new Map<string, ModelKind>();
@@ -177,6 +179,15 @@ export function createVercelProvider(opts: { apiKey: string | undefined; fetch: 
     configured: Boolean(opts.apiKey),
     listModels,
     lookupCost,
+
+    async balance(signal) {
+      // The team's AI Gateway credit balance, a USD string such as "95.50" (ADR-0055).
+      const { body } = await call(`${BASE}/credits`, { headers: { authorization: `Bearer ${opts.apiKey}` }, signal });
+      const parsed = Credits.safeParse(body);
+      const left = parsed.success ? Number(parsed.data.balance) : Number.NaN;
+      if (!Number.isFinite(left)) throw fail(null, "Vercel AI Gateway answered a balance Ukiyo can't read");
+      return left;
+    },
 
     async priceOf(modelId, signal) {
       if (!prices.has(modelId)) await listModels(signal); // one refresh for a model the listing didn't have

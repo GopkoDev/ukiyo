@@ -5,11 +5,11 @@ import { fixture } from "../../../../tests/helpers/fake-fetch";
 import { seedRecording, TINY_MP3 } from "../../../../tests/helpers/recordings";
 import { createTestApp } from "../../../../tests/helpers/test-app";
 import { ErrorResponse } from "../../../shared/errors";
-import { CreditsResponse, Recording, RecordingPage, SpeechModelsResponse } from "../../../shared/speech";
+import { Recording, RecordingPage, SpeechModelsResponse } from "../../../shared/speech";
 
 const MP3 = new Uint8Array([0x49, 0x44, 0x33, 4, 0, 0, 1, 2, 3]);
 
-/** OpenRouter stand-in: the recorded speech catalog, credits, speech and generation lookups; records each call. */
+/** OpenRouter stand-in: the recorded speech catalog, speech and generation lookups; records each call. */
 function openRouter(
   speech: () => Response = () =>
     new Response(MP3, { headers: { "content-type": "audio/mpeg", "x-generation-id": "gen-tts-1" } }),
@@ -53,17 +53,6 @@ describe("audio routes", () => {
     const body = SpeechModelsResponse.parse(await res.json());
     expect(body.models).toHaveLength(36);
     expect(body.models[0]?.maker).toBe("ElevenLabs");
-  });
-
-  it("reads the credit balance, or says OpenRouter is not configured", async () => {
-    expect(CreditsResponse.parse(await (await configured().app.request("/api/audio/credits")).json())).toEqual({
-      remainingUsd: 12.5,
-    });
-    t?.cleanup();
-    t = createTestApp({}, { fetch: openRouter() });
-    const res = await t.app.request("/api/audio/credits");
-    expect(res.status).toBe(409);
-    expect((await errorOf(res)).code).toBe("PROVIDER_NOT_CONFIGURED");
   });
 
   it("generates a recording, saves its file and serves it; the key never reaches the answer", async () => {
@@ -164,7 +153,6 @@ describe("audio routes", () => {
     const app = configured().app;
     const routes: [string, string][] = [
       ["GET", "/api/audio/models"],
-      ["GET", "/api/audio/credits"],
       ["GET", "/api/audio/recordings"],
       ["POST", "/api/audio/recordings"],
       ["GET", "/api/audio/recordings/01N0000000000000000000000A"],

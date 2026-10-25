@@ -4,6 +4,7 @@ import { ApiError, api } from "@/lib/api";
 import { renderWithQuery } from "@/test-utils";
 import type { Job } from "../../../shared/generations";
 import type { ImageModel } from "../../../shared/providers";
+import { balanceKey } from "../balances/balances";
 import { GeneratePanel } from "./GeneratePanel";
 
 vi.mock("@/lib/api", async (orig) => ({
@@ -176,6 +177,17 @@ describe("GeneratePanel (SCR-01)", () => {
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Dismiss" })));
     await waitFor(() => expect(screen.queryByText("Generation failed")).not.toBeInTheDocument());
     expect(m.dismissJob).toHaveBeenCalled();
+  });
+
+  it("reads the provider balances again when a generation ends, succeeded or failed (models-page-audio AC-13)", async () => {
+    configured();
+    m.currentJob.mockResolvedValue({ job: job({ status: "running" }) });
+    const fetchBalance = vi.fn(async () => ({ provider: "openrouter" as const, remainingUsd: 1 }));
+    const { client } = renderWithQuery(<GeneratePanel />);
+    await client.fetchQuery({ queryKey: balanceKey("openrouter"), queryFn: fetchBalance }); // as the navigation bar reads it
+    await waitFor(() => expect(m.currentJob).toHaveBeenCalled());
+    m.currentJob.mockResolvedValue({ job: job({ status: "failed", error: { code: "PROVIDER_ERROR", message: "x" } }) });
+    await waitFor(() => expect(fetchBalance).toHaveBeenCalledTimes(2), { timeout: 3000 });
   });
 
   it("shows the latest result with a link to it once saved", async () => {

@@ -66,4 +66,22 @@ describe("model-picker-preferences NFRs", () => {
     });
     expect(p95(offs)).toBeLessThanOrEqual(50);
   });
+
+  it("saves a speech-model ★ ≤ 50 ms p95 with a warm speech catalog (models-page-audio §6)", async () => {
+    const fetch = fakeFetch((url) =>
+      url.includes("output_modalities=speech")
+        ? { body: fixture("openrouter/speech/models.json") }
+        : { body: fixture("openrouter/models.json") },
+    );
+    t = createTestApp({ openRouterApiKey: "k" }, { fetch });
+    const patch = (favorite: boolean) =>
+      t.app.request("/api/model-preferences", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ provider: "openrouter", kind: "speech", model: "elevenlabs/eleven-v3", favorite }),
+      });
+    expect((await patch(true)).status).toBe(200); // warms the speech catalog
+    const saves = await timed(50, async (i) => expect((await patch(i % 2 === 0)).status).toBe(200));
+    expect(p95(saves)).toBeLessThanOrEqual(50);
+  });
 });

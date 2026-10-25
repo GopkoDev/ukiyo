@@ -14,6 +14,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { ProviderBalances } from "@/features/balances/ProviderBalances";
 import { api } from "@/lib/api";
 import { Link } from "@/lib/router";
 import { groupOf, SECTION_GROUPS, type Section } from "@/sections";
@@ -89,6 +90,9 @@ export function AppSidebar({ sections, current }: { sections: readonly Section[]
         </nav>
       </SidebarContent>
       <SidebarFooter className="flex-row flex-wrap items-center group-data-[collapsible=icon]:flex-col">
+        <div className="w-full">
+          <ProviderBalances />
+        </div>
         <ModeToggle />
         <Badge
           variant={health.isError ? "destructive" : "secondary"}

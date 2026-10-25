@@ -38,6 +38,8 @@ export type AppDeps = {
   generationTimeoutMs?: number;
   /** Published-price lookup timeout (default 10 s) — a hung provider must end in «couldn't load». */
   priceTimeoutMs?: number;
+  /** Balance read deadline (default 10 s) — a hung provider reads as «—» (ADR-0055). */
+  balanceTimeoutMs?: number;
 };
 
 export const GENERATION_TIMEOUT_MS = 180_000;
@@ -58,6 +60,7 @@ export function createApp(deps: AppDeps, options: CreateAppOptions = {}) {
     providers,
     catalog,
     prices: createPriceCatalog(providers, catalog, deps.now, deps.priceTimeoutMs),
+    balanceTimeoutMs: deps.balanceTimeoutMs,
   });
 
   // Speech (text-to-speech) behind its own port (ADR-0039); its catalog also checks speech-model preferences (ADR-0054).

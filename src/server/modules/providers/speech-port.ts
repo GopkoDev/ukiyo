@@ -1,5 +1,5 @@
 import type { ProviderId } from "../../../shared/providers";
-import type { CreditsResponse, SpeechModel, VoiceSettings } from "../../../shared/speech";
+import type { SpeechModel, VoiceSettings } from "../../../shared/speech";
 import type { CostLookup } from "./port";
 
 /** One text-to-speech request, already validated against the model (only its accepted settings, ADR-0040). */
@@ -18,8 +18,6 @@ export interface SpeechProvider {
   readonly configured: boolean;
   listModels(signal?: AbortSignal): Promise<SpeechModel[]>;
   speak(input: SpeechInput, signal: AbortSignal): Promise<SpeechResult>;
-  /** Remaining balance; `null` when the key may not read it. */
-  credits(signal?: AbortSignal): Promise<CreditsResponse>;
   lookupCost(costRef: string, signal: AbortSignal): Promise<CostLookup>;
 }
 

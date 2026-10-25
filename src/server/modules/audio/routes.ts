@@ -33,8 +33,6 @@ export function registerAudioRoutes(app: Hono, deps: AudioRouteDeps) {
 
   app.get("/audio/models", async (c) => c.json(await service.models()));
 
-  app.get("/audio/credits", async (c) => c.json(await service.credits()));
-
   app.get("/audio/recordings", async (c) => {
     const q = PageQuery.safeParse(c.req.query());
     if (!q.success)

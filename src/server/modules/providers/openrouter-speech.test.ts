@@ -186,7 +186,7 @@ describe("OpenRouter speech adapter — speak", () => {
     ).rejects.toThrow(/reach OpenRouter/);
   });
 
-  it("refuses to speak or read credits without a key", async () => {
+  it("refuses to speak without a key", async () => {
     const models = await modelsOf();
     const adapter = createOpenRouterSpeech({ apiKey: undefined, fetch: router(() => audio()) });
     expect(adapter.configured).toBe(false);
@@ -199,17 +199,7 @@ describe("OpenRouter speech adapter — speak", () => {
   });
 });
 
-describe("OpenRouter speech adapter — credits and cost lookup", () => {
-  it("reads the remaining balance, or null when the key may not read it", async () => {
-    const ok = createOpenRouterSpeech({
-      apiKey: "sk",
-      fetch: router(() => Response.json(fixture("openrouter/speech/credits.json"))),
-    });
-    expect(await ok.credits()).toEqual({ remainingUsd: 12.5 });
-    const denied = createOpenRouterSpeech({ apiKey: "sk", fetch: router(() => Response.json({}, { status: 403 })) });
-    expect(await denied.credits()).toBeNull();
-  });
-
+describe("OpenRouter speech adapter — cost lookup", () => {
   it("looks up a speech request's actual cost by its generation id", async () => {
     const f = router(() => Response.json(fixture("openrouter/speech/generation-found.json")));
     const adapter = createOpenRouterSpeech({ apiKey: "sk", fetch: f });

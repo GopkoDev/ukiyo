@@ -16,7 +16,7 @@ vi.mock("@/lib/api", async (orig) => ({
     currentJob: vi.fn(),
     generations: vi.fn(),
     speechModels: vi.fn(),
-    speechCredits: vi.fn(),
+    providerBalance: vi.fn(),
     recordings: vi.fn(),
     recording: vi.fn(),
     recordingModels: vi.fn(),
@@ -46,7 +46,7 @@ beforeEach(() => {
   m.currentJob.mockResolvedValue({ job: null });
   m.generations.mockResolvedValue({ items: [], nextCursor: null });
   m.speechModels.mockResolvedValue({ models: [V3], fetchedAt: "2026-10-25T10:00:00.000Z" });
-  m.speechCredits.mockResolvedValue({ remainingUsd: 1 });
+  m.providerBalance.mockResolvedValue({ provider: "openrouter", remainingUsd: 1 });
   m.recordingModels.mockResolvedValue({ models: [] });
   m.recordings.mockImplementation(async () => ({ items: [...stored], nextCursor: null }));
   m.recording.mockImplementation(async (id) => stored.find((r) => r.id === id) ?? rec(0));

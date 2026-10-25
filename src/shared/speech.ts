@@ -53,9 +53,6 @@ export type SpeechModel = z.infer<typeof SpeechModel>;
 export const SpeechModelsResponse = z.object({ models: z.array(SpeechModel), fetchedAt: z.string() });
 export type SpeechModelsResponse = z.infer<typeof SpeechModelsResponse>;
 
-export const CreditsResponse = z.object({ remainingUsd: z.number() }).nullable();
-export type CreditsResponse = z.infer<typeof CreditsResponse>;
-
 /** Longest text any family accepts (ElevenLabs Flash v2.5); the per-model limit is checked by the service. */
 export const MAX_TEXT = 40_000;
 

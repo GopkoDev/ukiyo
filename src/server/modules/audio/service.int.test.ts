@@ -51,7 +51,6 @@ function fakeProvider(opts: { configured?: boolean; speak?: Speak; lookup?: Cost
       inputs.push(input);
       return speak(input, signal);
     },
-    credits: async () => ({ remainingUsd: 12.5 }),
     lookupCost: async () => opts.lookup ?? { status: "not-yet" },
   };
   return { p, inputs, setSpeak: (s: Speak) => (speak = s) };
@@ -212,7 +211,6 @@ describe("audio service — refusals and failures", () => {
     const { service, fake } = setup({ configured: false });
     const err = await appError(service.start({ text: "Hi", model: "elevenlabs/eleven-v3", voice: "george" }));
     expect(err).toMatchObject({ code: "PROVIDER_NOT_CONFIGURED", status: 409, details: { provider: "openrouter" } });
-    expect((await appError(service.credits())).code).toBe("PROVIDER_NOT_CONFIGURED");
     expect(fake.inputs).toHaveLength(0);
   });
 

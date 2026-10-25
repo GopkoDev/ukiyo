@@ -9,7 +9,6 @@ import {
 } from "../../../shared/curation";
 import {
   billedChars,
-  type CreditsResponse,
   estimateMicros,
   type Recording,
   type RecordingModelGroupsResponse,
@@ -139,15 +138,6 @@ export function createAudioService(deps: AudioServiceDeps) {
     async models(): Promise<SpeechModelsResponse> {
       const { models, fetchedAt } = await catalogModels();
       return { models, fetchedAt: new Date(fetchedAt).toISOString() };
-    },
-
-    async credits(): Promise<CreditsResponse> {
-      try {
-        return await provider().credits();
-      } catch (err) {
-        if (err instanceof ProviderError) return null;
-        throw err;
-      }
     },
 
     /** Generates one recording and saves it with its file; the answer is the saved recording (ADR-0045). */

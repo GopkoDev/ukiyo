@@ -58,4 +58,9 @@ export interface ImageProvider {
    * mean «price unknown». Throws `ProviderError` when the price can't be loaded.
    */
   priceOf?(modelId: string, signal?: AbortSignal): Promise<ModelPrice>;
+  /**
+   * Optional: the account's remaining credit in USD as the provider reports it (ADR-0055). Throws `ProviderError`
+   * when it can't be read or isn't a finite number. Adapters without it have no balance («—»).
+   */
+  balance?(signal: AbortSignal): Promise<number>;
 }

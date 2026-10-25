@@ -11,7 +11,8 @@ vi.mock("@/lib/api", async (orig) => ({
   ...(await orig<typeof import("@/lib/api")>()),
   api: {
     speechModels: vi.fn(),
-    speechCredits: vi.fn(),
+    providers: vi.fn(),
+    providerBalance: vi.fn(),
     recordings: vi.fn(),
     createRecording: vi.fn(),
     recording: vi.fn(),
@@ -44,7 +45,8 @@ const at = (search: string) => {
 beforeEach(() => {
   vi.resetAllMocks();
   m.speechModels.mockResolvedValue({ models: [V3], fetchedAt: "2026-10-25T10:00:00.000Z" });
-  m.speechCredits.mockResolvedValue({ remainingUsd: 12.5 });
+  m.providers.mockResolvedValue({ providers: [{ id: "openrouter", name: "OpenRouter", configured: true }] });
+  m.providerBalance.mockResolvedValue({ provider: "openrouter", remainingUsd: 12.5 });
   m.recordings.mockResolvedValue({ items: [], nextCursor: null });
   m.recording.mockResolvedValue(R);
 });

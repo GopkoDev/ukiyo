@@ -16,9 +16,8 @@ import {
 import { HealthResponse } from "../../shared/health";
 import { ModelPreference, PreferencesResponse, type SetPreferenceRequest } from "../../shared/models";
 import { CostHistory, PriceResponse } from "../../shared/pricing";
-import { ModelsResponse, ProvidersResponse } from "../../shared/providers";
+import { BalanceResponse, ModelsResponse, ProvidersResponse } from "../../shared/providers";
 import {
-  CreditsResponse,
   Recording,
   RecordingModelGroupsResponse,
   RecordingPage,
@@ -79,6 +78,9 @@ export const api = {
   },
   modelPreferences: (provider: string) =>
     request(PreferencesResponse, `/model-preferences?provider=${encodeURIComponent(provider)}`),
+  /** Speech-model preferences — kept apart from image ones (ADR-0054); written through `setModelPreference` with `kind: "speech"`. */
+  speechModelPreferences: (provider: string) =>
+    request(PreferencesResponse, `/model-preferences?provider=${encodeURIComponent(provider)}&kind=speech`),
   setModelPreference: (body: SetPreferenceRequest) =>
     request(ModelPreference, "/model-preferences", json("PATCH", body)),
   currentJob: () => request(CurrentJobResponse, "/generation-job"),
@@ -117,7 +119,9 @@ export const api = {
   deleteGeneration: (id: string) => request(z.null(), `/generations/${encodeURIComponent(id)}`, json("DELETE")),
   generation: (id: string) => request(Generation, `/generations/${encodeURIComponent(id)}`),
   speechModels: () => request(SpeechModelsResponse, "/audio/models"),
-  speechCredits: () => request(CreditsResponse, "/audio/credits"),
+  /** One provider's remaining credit; `remainingUsd: null` when it couldn't be read (ADR-0055). */
+  providerBalance: (providerId: string) =>
+    request(BalanceResponse, `/providers/${encodeURIComponent(providerId)}/balance`),
   recordings: (cursor?: string, limit?: number, filter?: { model: string }) => {
     const q = new URLSearchParams();
     if (filter) q.set("model", filter.model);
