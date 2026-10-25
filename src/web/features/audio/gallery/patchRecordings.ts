@@ -18,6 +18,14 @@ function apply(items: Recording[], id: string, patch: Partial<Recording> | "remo
     : items.map((r) => (r.id === id ? { ...r, ...patch } : r));
 }
 
+/** Announces a deleted recording to state outside the query cache (the Speech page's latest result, AC-11). */
+const deleted = new EventTarget();
+export function onRecordingDeleted(listener: (id: string) => void): () => void {
+  const handler = (e: Event) => listener((e as CustomEvent<string>).detail);
+  deleted.addEventListener("deleted", handler);
+  return () => deleted.removeEventListener("deleted", handler);
+}
+
 /**
  * Updates (or removes) one recording in every cached recordings view by data shape — gallery pages, the Speech
  * page's recent list, model groups (counts follow a removal; an empty group goes) — and its own detail entry.
@@ -39,6 +47,8 @@ export function patchRecordings(qc: QueryClient, id: string, patch: Partial<Reco
       qc.setQueryData(key, { ...data, items: apply(data.items, id, patch) });
     }
   }
-  if (patch === "remove") qc.removeQueries({ queryKey: ["recording", id] });
-  else qc.setQueryData<Recording>(["recording", id], (old) => (old ? { ...old, ...patch } : old));
+  if (patch === "remove") {
+    qc.removeQueries({ queryKey: ["recording", id] });
+    deleted.dispatchEvent(new CustomEvent("deleted", { detail: id }));
+  } else qc.setQueryData<Recording>(["recording", id], (old) => (old ? { ...old, ...patch } : old));
 }

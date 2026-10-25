@@ -21,7 +21,7 @@
 | T12 | Build the audio «By model» overview | ui | agent | S | T11 | done | COMMIT |
 | T13 | Build the recording dialog and page with notes, details and delete | ui | agent | M | T6, T7, T11 | done | COMMIT |
 | T14 | Hand Reuse from the gallery to the Speech page | ui | agent | M | T10, T13 | done | COMMIT |
-| T15 | Prove cross-section coherence and the request budgets | tests | agent | S | T12, T13, T14 | todo | — |
+| T15 | Prove cross-section coherence and the request budgets | tests | agent | S | T12, T13, T14 | done | COMMIT |
 | T16 | Register the new components and update the architecture map | docs | agent | S | T15 | todo | — |
 
 **Total:** 16 tasks, ~7 person-days.

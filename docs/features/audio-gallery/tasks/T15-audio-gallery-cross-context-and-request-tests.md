@@ -9,8 +9,8 @@ files_hint: ["src/web/features/audio/gallery/CrossContext.test.tsx", "src/web/fe
 owner: "agent (sdd:implement)"
 estimate: "S"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T15 — Prove cross-section coherence and the request budgets

@@ -11,6 +11,7 @@ import { ApiError, api } from "@/lib/api";
 import { replace, useRoute } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import type { Recording, SpeechModel } from "../../../shared/speech";
+import { onRecordingDeleted } from "./gallery/patchRecordings";
 import { limitText, ModelSelect } from "./ModelSelect";
 import { SPEECH_CREDITS_KEY as CREDITS_KEY, SPEECH_MODELS_KEY as MODELS_KEY, RECORDINGS_KEY } from "./queryKeys";
 import { RecentRecordings } from "./RecentRecordings";
@@ -106,6 +107,8 @@ export function SpeechPage() {
   const draft = useSpeechDraft(models.data?.models);
   const [result, setResult] = useState<{ recording: Recording; fresh: boolean } | null>(null);
   const rootRef = useRef<HTMLElement>(null);
+  // A recording deleted anywhere (the gallery, the recent list) is no longer the latest result (audio-gallery AC-11).
+  useEffect(() => onRecordingDeleted((id) => setResult((cur) => (cur?.recording.id === id ? null : cur))), []);
   // The latest result is read back while its cost is pending, so it settles without a reload (spec AC-13, review R1).
   const latest = useQuery({
     queryKey: ["recording", result?.recording.id],
