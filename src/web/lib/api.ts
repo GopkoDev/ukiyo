@@ -20,6 +20,7 @@ import { ModelsResponse, ProvidersResponse } from "../../shared/providers";
 import {
   CreditsResponse,
   Recording,
+  RecordingModelGroupsResponse,
   RecordingPage,
   SpeechModelsResponse,
   type StartSpeechRequest,
@@ -117,8 +118,9 @@ export const api = {
   generation: (id: string) => request(Generation, `/generations/${encodeURIComponent(id)}`),
   speechModels: () => request(SpeechModelsResponse, "/audio/models"),
   speechCredits: () => request(CreditsResponse, "/audio/credits"),
-  recordings: (cursor?: string, limit?: number) => {
+  recordings: (cursor?: string, limit?: number, filter?: { model: string }) => {
     const q = new URLSearchParams();
+    if (filter) q.set("model", filter.model);
     if (cursor) q.set("cursor", cursor);
     if (limit !== undefined) q.set("limit", String(limit));
     const qs = q.toString();
@@ -126,5 +128,17 @@ export const api = {
   },
   recording: (id: string) => request(Recording, `/audio/recordings/${encodeURIComponent(id)}`),
   createRecording: (body: StartSpeechRequest) => request(Recording, "/audio/recordings", json("POST", body)),
+  recordingModels: (latest: number) =>
+    request(RecordingModelGroupsResponse, `/audio/recordings/models?latest=${latest}`),
+  setRecordingComment: (id: string, body: string) =>
+    request(CommentResponse, `/audio/recordings/${encodeURIComponent(id)}/comment`, json("PUT", { body })),
+  addRecordingTag: (id: string, tag: string) =>
+    request(TagsResponse, `/audio/recordings/${encodeURIComponent(id)}/tags`, json("POST", { tag })),
+  removeRecordingTag: (id: string, tag: string) =>
+    request(
+      TagsResponse,
+      `/audio/recordings/${encodeURIComponent(id)}/tags/${encodeURIComponent(tag)}`,
+      json("DELETE"),
+    ),
   deleteRecording: (id: string) => request(z.null(), `/audio/recordings/${encodeURIComponent(id)}`, json("DELETE")),
 };

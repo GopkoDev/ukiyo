@@ -156,7 +156,7 @@
         "src/web/features/audio/gallery/useRecordingPendingCost.ts"
       ],
       "file": "docs/features/audio-gallery/tasks/T10-audio-gallery-client-and-queries.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T11",

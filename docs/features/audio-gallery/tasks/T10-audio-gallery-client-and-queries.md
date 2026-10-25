@@ -9,8 +9,8 @@ files_hint: ["src/web/lib/api.ts", "src/web/features/audio/queryKeys.ts", "src/w
 owner: "agent (sdd:implement)"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T10 — Add the audio gallery's API client, view parsing, query keys and cache patching
