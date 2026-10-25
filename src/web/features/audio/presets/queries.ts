@@ -1,7 +1,11 @@
 import { type QueryClient, queryOptions, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { VoicePreset, VoicePresetsResponse } from "../../../../shared/voice-presets";
+import { createNotice } from "../../media-gallery/notice";
 import { RECORDINGS_KEY } from "../queryKeys";
+
+/** «Recording deleted.» handed from a dialog to the preset page behind it (one notice per gallery, review R2). */
+export const voicesNotice = createNotice();
 
 /** Voice presets (sad.md §4 item 11): the list and one preset; stats are read fresh on every visit (AC-12). */
 export const VOICE_PRESETS_KEY = ["voice-presets"] as const;

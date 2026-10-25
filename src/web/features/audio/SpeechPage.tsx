@@ -242,6 +242,11 @@ export function SpeechPage() {
       setPresetWanted(null);
       return;
     }
+    if (models.isError) {
+      setPresetNote("Couldn't load the speech models — the voice preset wasn't applied.");
+      setPresetWanted(null);
+      return;
+    }
     if (!presetList || !catalog) return;
     const p = presetList.find((x) => x.id === presetWanted);
     setPresetWanted(null);
@@ -249,7 +254,7 @@ export function SpeechPage() {
     else if (!p) setPresetNote("This voice no longer exists.");
     else if (presetAvailability(p, catalog) !== "ok") setPresetNote(retiredText(p));
     else applyPreset(p);
-  }, [presetWanted, presetList, catalog, presetsQ.isError]);
+  }, [presetWanted, presetList, catalog, presetsQ.isError, models.isError]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the recording or the model list arrives
   useEffect(() => {
     if (reuseId === null) return;
@@ -263,6 +268,8 @@ export function SpeechPage() {
       return;
     }
     if (!reuseRec.data || reuseRec.isFetching || !models.data) return; // wait (a models error shows its own Try again)
+    // A linked recording waits for the presets too, so its preset can be re-applied (AC-15, review R1).
+    if (reuseRec.data.preset && presetsQ.isPending) return;
     const r = reuseRec.data;
     setReuseId(null);
     if (inFlight.current) {
@@ -272,7 +279,7 @@ export function SpeechPage() {
     }
     if (draft.text.trim() && draft.text !== r.text) setAsking(r);
     else applyReuse(r);
-  }, [reuseId, reuseRec.data, reuseRec.isError, reuseRec.isFetching, models.data]);
+  }, [reuseId, reuseRec.data, reuseRec.isError, reuseRec.isFetching, models.data, presetsQ.isPending]);
 
   const unconfigured = openRouter?.configured === false;
   const model = draft.model;
@@ -316,6 +323,7 @@ export function SpeechPage() {
                 refetch: () => presetsQ.refetch(),
               }}
               models={catalog}
+              modelsFailed={models.isError}
               prefs={prefList}
               applied={applied}
               modified={modified}

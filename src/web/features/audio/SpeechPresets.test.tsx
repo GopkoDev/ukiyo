@@ -321,4 +321,77 @@ describe("Speech page — voice presets (SCR-01)", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "Text" }), { target: { value: "Hi" } });
     expect(screen.getByRole("button", { name: "Generate speech" })).toBeEnabled();
   });
+
+  it("re-applies the preset of a recording reused from the gallery even when the presets arrive last (review R1, AC-15)", async () => {
+    let release: (v: { presets: VoicePreset[] }) => void = () => {};
+    m.voicePresets.mockReturnValue(new Promise((r) => (release = r)));
+    m.recording.mockResolvedValue(recording({ preset: { id: NARRATOR.id, name: "Narrator" } }));
+    window.history.replaceState(null, "", `/audio/speech?reuse=01N0000000000000000000000A`);
+    renderWithQuery(<SpeechPage />);
+    await waitFor(() => expect(m.recording).toHaveBeenCalled());
+    await act(async () => release({ presets: [NARRATOR, RETIRED] }));
+    await waitFor(() => expect(modelButton()).toHaveTextContent("Flash v2"));
+    await waitFor(() => expect(panel()).toHaveTextContent("Narrator"));
+    expect(panel()).not.toHaveTextContent("modified");
+  });
+
+  it("says the speech models couldn't load instead of «Loading models…» (review R4, AC-09)", async () => {
+    m.speechModels.mockRejectedValue(new ApiError(502, "PROVIDER_ERROR", "down"));
+    window.history.replaceState(null, "", `/audio/speech?preset=${NARRATOR.id}`);
+    renderWithQuery(<SpeechPage />);
+    expect(await screen.findByText("Couldn't load the speech models — the voice preset wasn't applied.")).toBeVisible();
+    fireEvent.click(panel());
+    fireEvent.click(
+      within(await screen.findByRole("listbox", { name: "Voice presets" })).getByRole("option", { name: /Narrator/ }),
+    );
+    expect(await screen.findByText("Couldn't load the speech models.")).toBeVisible();
+  });
+
+  it("applies a preset whose model is hidden, marked «Hidden», over the automatic pick (AC-03)", async () => {
+    m.speechModelPreferences.mockResolvedValue({
+      preferences: [{ provider: "openrouter", model: FLASH.id, favorite: false, hidden: true, updatedAt: "x" }],
+    });
+    await ready();
+    fireEvent.click(panel());
+    const list = await screen.findByRole("listbox", { name: "Voice presets" });
+    expect(within(list).getByRole("option", { name: /Narrator/ })).toHaveTextContent("Hidden");
+    fireEvent.click(within(list).getByRole("option", { name: /Narrator/ }));
+    expect(modelButton()).toHaveTextContent("Flash v2");
+  });
+
+  it("shows «modified» right after applying a preset holding a setting the model no longer accepts (AC-10)", async () => {
+    m.voicePresets.mockResolvedValue({ presets: [preset({ settings: { ...NARRATOR.settings, style: 0.3 } })] });
+    await ready();
+    await pick("Narrator");
+    expect(panel()).toHaveTextContent("Narrator · modified");
+  });
+
+  it("saves a modified preset as a new one and applies it (AC-06)", async () => {
+    const fresh = preset({ id: "01P00000000000000000000009", name: "Calm reader", voice: "george" });
+    m.createVoicePreset.mockResolvedValue(fresh);
+    m.voicePresets.mockResolvedValue({ presets: [NARRATOR, RETIRED, fresh] });
+    await ready();
+    await pick("Narrator");
+    fireEvent.click(voiceButton());
+    fireEvent.click(
+      within(await screen.findByRole("listbox", { name: "Voices" })).getByRole("option", { name: "George" }),
+    );
+    fireEvent.click(saveButton());
+    const dialog = await screen.findByRole("dialog", { name: "Save voice preset" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save as new" }));
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Name" }), { target: { value: "Calm reader" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(panel()).toHaveTextContent("Calm reader"));
+    expect(m.updateVoicePreset).not.toHaveBeenCalled();
+  });
+
+  it("never swaps the form under a request in flight when a preset is handed over (AC-14)", async () => {
+    m.createRecording.mockReturnValue(new Promise(() => {}));
+    await ready();
+    fireEvent.change(screen.getByRole("textbox", { name: "Text" }), { target: { value: "Hi" } });
+    fireEvent.click(screen.getByRole("button", { name: "Generate speech" }));
+    act(() => navigate(`/audio/speech?preset=${NARRATOR.id}`));
+    expect(await screen.findByText("Wait for the current recording to finish, then apply.")).toBeVisible();
+    expect(modelButton()).toHaveTextContent("Multilingual v2");
+  });
 });

@@ -25,6 +25,8 @@ export function PresetSelect(props: {
   id: string;
   presets: { data: VoicePreset[] | undefined; isError: boolean; isPending: boolean; refetch: () => void };
   models: SpeechModel[] | undefined;
+  /** The speech model list failed: say so instead of «Loading models…» (review R4). */
+  modelsFailed?: boolean;
   prefs: ModelPreference[] | null | undefined;
   applied: VoicePreset | undefined;
   modified: boolean;
@@ -47,7 +49,8 @@ export function PresetSelect(props: {
   const choose = (p: VoicePreset) => {
     const state = presetAvailability(p, props.models);
     if (state === "retired") return setNote(retiredText(p));
-    if (state === "loading") return setNote("Loading models…");
+    if (state === "loading")
+      return setNote(props.modelsFailed ? "Couldn't load the speech models." : "Loading models…");
     setNote(null);
     setOpen(false);
     props.onApply(p);

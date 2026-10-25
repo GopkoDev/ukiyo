@@ -27,7 +27,7 @@ import { voiceDot, voiceLabel } from "../VoiceSelect";
 import { DeletePresetDialog, RenamePresetDialog } from "./PresetDialogs";
 import { retiredText } from "./PresetSelect";
 import { presetCostText, presetCountText, presetLastUsedText } from "./presetCost";
-import { presetPath, useVoicePreset, useVoicePresets, VOICES_PATH } from "./queries";
+import { presetPath, useVoicePreset, useVoicePresets, VOICES_PATH, voicesNotice } from "./queries";
 
 /** The preset an address shows: its own page, or the page behind a recording dialog opened from it (ADR-0059). */
 function presetOfRoute(route: Route): string | undefined {
@@ -71,19 +71,27 @@ function Settings({ p }: { p: VoicePreset }) {
 }
 
 function ApplyButton({ p, models }: { p: VoicePreset; models: SpeechModel[] | undefined }) {
+  const failedModels = useSpeechModels().isError;
   const state = presetAvailability(p, models);
+  // No model list: «loading», or — when it failed — say so on the button (review R4).
+  const why =
+    state === "retired"
+      ? retiredText(p)
+      : state === "loading" && failedModels
+        ? "Couldn't load the speech models."
+        : null;
   const button = (
     <Button size="sm" disabled={state !== "ok"} onClick={() => navigate(applyPath(p.id))}>
       Apply
     </Button>
   );
-  if (state !== "retired") return button;
+  if (!why) return button;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <span className="inline-flex">{button}</span>
       </TooltipTrigger>
-      <TooltipContent>{retiredText(p)}</TooltipContent>
+      <TooltipContent>{why}</TooltipContent>
     </Tooltip>
   );
 }
@@ -263,7 +271,7 @@ function PresetPage({ id }: { id: string }) {
         <DeletePresetDialog
           preset={dialog === "delete" ? p : undefined}
           onClose={() => setDialog(null)}
-          onDeleted={() => navigate(`${VOICES_PATH}?deleted=1`)}
+          onDeleted={() => replace(`${VOICES_PATH}?deleted=1`)}
         />
       </>
     );
@@ -281,6 +289,12 @@ function PresetGrid({ preset, models }: { preset: VoicePreset; models: SpeechMod
   const view: AudioListView = { kind: "preset", presetId: preset.id };
   const q = useInfiniteQuery(audioListOptions(view));
   const paused = isDialogVisit(useRoute());
+  const handedOver = voicesNotice.useShown(); // the dialog closed after a delete
+  useEffect(() => voicesNotice.clear, []);
+  useEffect(() => {
+    if (paused) voicesNotice.clear();
+  }, [paused]);
+  const notice = handedOver && <p className="text-muted-foreground text-sm">Recording deleted.</p>;
   const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage } = q;
   const { sentinelRef } = usePagingSentinel({
     ready: q.data !== undefined,
@@ -291,17 +305,19 @@ function PresetGrid({ preset, models }: { preset: VoicePreset; models: SpeechMod
     fetchNextPage,
   });
   if (q.isPending) return <p className="text-muted-foreground text-sm">Loading…</p>;
-  if (q.isError && !q.data) return <Failure text="Couldn't load the recordings." onRetry={() => q.refetch()} />;
+  if (q.isError && !q.data) return <Failure text="Couldn't load this voice." onRetry={() => q.refetch()} />;
   const items = q.data.pages.flatMap((p) => p.items);
   if (items.length === 0)
     return (
       <div className="flex flex-col items-start gap-3">
+        {notice}
         <p className="text-muted-foreground">No recordings with this voice yet.</p>
         <ApplyButton p={preset} models={models} />
       </div>
     );
   return (
     <div className="flex flex-col gap-4">
+      {notice}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
         {items.map((r) => (
           <RecordingCard key={r.id} r={r} views={{ grid: view, order: view }} gallery="voices" />

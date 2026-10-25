@@ -136,4 +136,17 @@ describe("recordings linked to voice presets", () => {
     expect((await a.app.request(`/api/audio/recordings?preset=${p.id}&model=${MODEL}`)).status).toBe(400);
     expect((await a.app.request("/api/audio/recordings?preset=nope")).status).toBe(400);
   });
+
+  it("refuses a linked generation from another site; nothing is saved or linked (AC-17)", async () => {
+    const a = app();
+    const p = await preset(a);
+    const init = json("POST", { text: "Hi", ...SETUP, presetId: p.id });
+    const res = await a.app.request("/api/audio/recordings", {
+      ...init,
+      headers: { ...init.headers, origin: "https://evil.example", "sec-fetch-site": "cross-site" },
+    });
+    expect(res.status).toBe(403);
+    expect(a.db.prepare("SELECT count(*) FROM audio_generations").pluck().get()).toBe(0);
+    expect(a.db.prepare("SELECT count(*) FROM voice_preset_recordings").pluck().get()).toBe(0);
+  });
 });

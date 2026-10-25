@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
 import { mediaDialogState, replace } from "@/lib/router";
 import { MediaDialog } from "../../media-gallery/MediaDialog";
+import { voicesNotice } from "../presets/queries";
 import { RECORDINGS_KEY } from "../queryKeys";
 import { audioViewKey } from "./audioGalleryView";
 import { patchRecordings } from "./patchRecordings";
@@ -57,7 +58,8 @@ export function RecordingDialog({ id }: { id: string }) {
             predicate: (q) => !pageFailed || JSON.stringify(q.queryKey) !== orderKey,
           });
         },
-        showGridNotice: audioNotice.show,
+        // The grid behind it says so: the audio gallery's, or the preset page's (ADR-0059, review R2).
+        showGridNotice: gallery === "voices" ? voicesNotice.show : audioNotice.show,
         cleanup: (deletedId) => qc.removeQueries({ queryKey: ["recording", deletedId] }),
       }}
     >

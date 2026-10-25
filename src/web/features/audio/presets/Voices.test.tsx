@@ -245,3 +245,43 @@ describe("counts follow a deletion anywhere (AC-16)", () => {
     ).toEqual([]);
   });
 });
+
+describe("deleting a preset's recording in its dialog (AC-16, review R2)", () => {
+  it("steps to the neighbour within the preset; the last one closes onto the preset page — never a notice in the audio gallery", async () => {
+    let items = [
+      rec(3, { preset: { id: NARRATOR.id, name: "Narrator" } }),
+      rec(1, { preset: { id: NARRATOR.id, name: "Narrator" } }),
+    ];
+    m.recordings.mockImplementation(async (_c, _l, filter) =>
+      filter && "preset" in filter ? { items, nextCursor: null } : { items: [], nextCursor: null },
+    );
+    m.recording.mockImplementation(async (id) => {
+      const r = items.find((x) => x.id === id);
+      if (!r) throw new ApiError(404, "NOT_FOUND", "gone");
+      return r;
+    });
+    m.deleteRecording.mockImplementation(async (id) => {
+      items = items.filter((x) => x.id !== id);
+      return null;
+    });
+    at(`/audio/voices/${NARRATOR.id}`);
+    const del = async () => {
+      const dialog = await screen.findByRole("dialog");
+      fireEvent.click(await within(dialog).findByRole("button", { name: "Delete" }));
+      const confirm = await screen.findByRole("dialog", { name: "Delete this recording?" });
+      fireEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
+    };
+    fireEvent.click((await screen.findAllByRole("link", { name: /Recording number/ }))[0] as HTMLElement);
+    await del();
+    await waitFor(() => expect(window.location.pathname).toBe(`/audio/recordings/${rec(1).id}`));
+    await del();
+    await waitFor(() => expect(window.location.pathname).toBe(`/audio/voices/${NARRATOR.id}`));
+    expect(await screen.findByText("Recording deleted.")).toBeVisible();
+    fireEvent.click(
+      within(screen.getByRole("navigation", { name: "Sections" })).getByRole("link", { name: "Audio gallery" }),
+    );
+    await waitFor(() => expect(window.location.pathname).toBe("/audio/gallery"));
+    expect(await screen.findByText("No recordings yet.")).toBeVisible();
+    expect(screen.queryByText("Recording deleted.")).not.toBeInTheDocument();
+  });
+});
