@@ -9,8 +9,8 @@ files_hint: ["src/shared/voice-presets.ts", "src/shared/voice-presets.test.ts"]
 owner: "dmytro.hopko"
 estimate: "S"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T2 — Shared voice-preset schemas, name rules and presetMatches

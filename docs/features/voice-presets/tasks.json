@@ -26,7 +26,7 @@
       "dod": "src/shared/voice-presets.ts: VoicePreset/Stats/Responses/Create/Update schemas, presetName (trim, 1–60 graphemes via Intl.Segmenter, nameKey = toLowerCase), presetMatches(preset, setup, model) (settingsFor + key-order-free deep equal, null voice only equals null), presetAvailability(preset, models|undefined) → ok | retired | loading, presetCostText(stats); unit tests for each; gate green",
       "files_hint": ["src/shared/voice-presets.ts", "src/shared/voice-presets.test.ts"],
       "file": "docs/features/voice-presets/tasks/T2-shared-voice-preset-schemas-name-rules-and-presetmatches.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T3",

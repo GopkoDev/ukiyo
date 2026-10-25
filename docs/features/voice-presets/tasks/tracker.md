@@ -3,7 +3,7 @@
 | Task | Title | Status | Step |
 |---|---|---|---|
 | T1 | Promote the voice-presets migration and test it | done | COMMIT |
-| T2 | Shared voice-preset schemas, name rules and presetMatches | todo | |
+| T2 | Shared voice-preset schemas, name rules and presetMatches | done | COMMIT |
 | T3 | Presets repo, service and routes with stats | todo | |
 | T4 | Link recordings to presets and list a preset's recordings | todo | |
 | T5 | Preset server timing NFRs | todo | |
