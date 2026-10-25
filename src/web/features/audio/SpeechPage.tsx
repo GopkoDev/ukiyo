@@ -110,7 +110,7 @@ export function SpeechPage() {
     enabled: result !== null,
     initialData: result?.recording,
     staleTime: Number.POSITIVE_INFINITY,
-    refetchInterval: (q) => (q.state.data?.costStatus === "pending" ? 10_000 : false),
+    refetchInterval: (q) => (q.state.status !== "error" && q.state.data?.costStatus === "pending" ? 10_000 : false),
   });
   const shown = result ? (latest.data ?? result.recording) : null;
 
@@ -162,6 +162,7 @@ export function SpeechPage() {
             draft.reuse(r);
             setResult({ recording: r, fresh: false });
           }}
+          onDeleted={(id) => setResult((current) => (current?.recording.id === id ? null : current))}
         />
       </TabsContent>
     </Tabs>

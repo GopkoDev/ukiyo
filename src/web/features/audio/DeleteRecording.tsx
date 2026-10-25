@@ -16,19 +16,22 @@ import type { Recording } from "../../../shared/speech";
 import { RECORDINGS_KEY } from "./queryKeys";
 
 /** SCR-06 — delete a recording and its file for good, after a confirmation (spec AC-16). */
-export function DeleteRecording({ recording }: { recording: Recording }) {
+export function DeleteRecording({ recording, onDeleted }: { recording: Recording; onDeleted?: (id: string) => void }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const del = useMutation({
     mutationFn: () => api.deleteRecording(recording.id),
     onSuccess: () => {
       setOpen(false);
+      qc.removeQueries({ queryKey: ["recording", recording.id] });
       qc.invalidateQueries({ queryKey: RECORDINGS_KEY });
+      onDeleted?.(recording.id);
     },
     onError: (err) => {
       if (err instanceof ApiError && err.code === "NOT_FOUND") {
         setOpen(false); // already gone — drop it quietly
         qc.invalidateQueries({ queryKey: RECORDINGS_KEY });
+        onDeleted?.(recording.id);
       }
     },
   });

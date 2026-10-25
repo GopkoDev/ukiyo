@@ -393,4 +393,25 @@ describe("Speech page — review fixes", () => {
     expect(ids.length).toBe(new Set(ids).size);
     expect(screen.getAllByRole("button", { name: "Model", hidden: true })).toHaveLength(2); // one per panel, each labelled
   });
+
+  it("drops the latest result when that recording is deleted, and stops reading it back (R14, AC-16)", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    m.createRecording.mockResolvedValue(recording());
+    m.recording.mockResolvedValue(recording());
+    m.deleteRecording.mockResolvedValue(null);
+    await ready();
+    fireEvent.change(text(), { target: { value: "Hi" } });
+    fireEvent.click(generate());
+    await screen.findByRole("region", { name: "Latest recording" });
+    m.recordings.mockResolvedValue({ items: [recording()], nextCursor: null });
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Recent" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Delete recording/ }));
+    m.recordings.mockResolvedValue({ items: [], nextCursor: null });
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Latest recording" })).not.toBeInTheDocument());
+    const calls = m.recording.mock.calls.length;
+    await act(async () => vi.advanceTimersByTime(30_000));
+    expect(m.recording.mock.calls.length).toBe(calls);
+    vi.useRealTimers();
+  });
 });
