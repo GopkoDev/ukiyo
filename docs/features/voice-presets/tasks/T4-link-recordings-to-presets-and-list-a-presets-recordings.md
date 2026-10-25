@@ -9,8 +9,8 @@ files_hint: ["src/shared/speech.ts", "src/server/modules/audio/repo.ts", "src/se
 owner: "dmytro.hopko"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T4 — Link recordings to presets and list a preset's recordings

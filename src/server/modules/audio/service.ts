@@ -18,6 +18,7 @@ import {
   StartSpeechRequest,
   settingsFor,
 } from "../../../shared/speech";
+import { presetMatches } from "../../../shared/voice-presets";
 import { AppError } from "../../lib/errors";
 import { newId as mintId } from "../../lib/ids";
 import type { CostSync } from "../generations/cost-sync";
@@ -26,6 +27,7 @@ import type { SpeechCatalog } from "../providers/speech-catalog";
 import type { SpeechProvider, SpeechRegistry, SpeechResult } from "../providers/speech-port";
 import type { FileStore } from "../storage/file-store";
 import { checkVoice, costFromResult, groupDigits, toRecordingDto } from "./domain";
+import type { PresetsRepo } from "./presets-repo";
 import type { RecordingRecord, RecordingsRepo } from "./repo";
 import { AudioConversionError, toPlayable } from "./wav";
 
@@ -35,6 +37,8 @@ export type AudioServiceDeps = {
   speech: SpeechRegistry;
   catalog: SpeechCatalog;
   repo: RecordingsRepo;
+  /** Voice presets: the link decision and each recording's preset (voice-presets ADR-0058). */
+  presets: PresetsRepo;
   files: FileStore;
   costSync: CostSync;
   /** Provider request timeout (spec §6: 180 s, same as images). */
@@ -94,7 +98,8 @@ export function createAudioService(deps: AudioServiceDeps) {
   function toDtos(records: readonly RecordingRecord[]): Recording[] {
     const names = displayNames(records.map((r) => r.model));
     const curation = deps.repo.curationOf(records.map((r) => r.id));
-    return records.map((r) => toRecordingDto(r, names.get(r.model), curation.get(r.id)));
+    const presets = deps.presets.presetsOf(records.map((r) => r.id));
+    return records.map((r) => toRecordingDto(r, names.get(r.model), curation.get(r.id), presets.get(r.id) ?? null));
   }
 
   const invalid = (field: string, message: string) =>
@@ -157,6 +162,11 @@ export function createAudioService(deps: AudioServiceDeps) {
         );
       checkVoice(model, req.voice);
       const settings = settingsFor(model.controls, req.settings);
+      // The link is decided now, on what is about to be sent (ADR-0058): a stale, changed or forged preset is never
+      // claimed; it is inserted with the recording only if the preset still exists then. Never refuses the request.
+      const named = req.presetId ? deps.presets.get(req.presetId) : undefined;
+      const linkTo =
+        named && presetMatches(named, { model: model.id, voice: req.voice, settings }, model) ? named.id : null;
 
       const startedAt = now();
       const sentAt = performance.now();
@@ -193,7 +203,11 @@ export function createAudioService(deps: AudioServiceDeps) {
       };
       try {
         await deps.files.stageAudio(id, audio.bytes, audio.mediaType);
-        deps.repo.insertAtomic(record, () => deps.files.commitAudioSync(record.filePath));
+        deps.repo.insertAtomic(
+          record,
+          () => deps.files.commitAudioSync(record.filePath),
+          linkTo ? () => deps.presets.linkIfExists(id, linkTo) : undefined,
+        );
       } catch (err) {
         // The staged copy (even a partly written one) is always this request's. A file already in place is
         // dropped only when no row owns it (a failed COMMIT after the rename) — with a clashing id it is another's.
@@ -209,11 +223,11 @@ export function createAudioService(deps: AudioServiceDeps) {
           costRef: record.costRef,
           answeredAt: startedAt + durationMs,
         });
-      return toRecordingDto(record, model.name);
+      return toDtos([record])[0] as Recording;
     },
 
     /** Newest first, all or one exact model id (audio-gallery AC-13). */
-    async list(q: { cursor?: string; limit: number; model?: string }): Promise<RecordingPage> {
+    async list(q: { cursor?: string; limit: number; model?: string; preset?: string }): Promise<RecordingPage> {
       const page = deps.repo.list(q);
       return { items: toDtos(page.items), nextCursor: page.nextCursor };
     },

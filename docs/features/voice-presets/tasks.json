@@ -61,7 +61,7 @@
         "src/server/modules/audio/presets-link.int.test.ts"
       ],
       "file": "docs/features/voice-presets/tasks/T4-link-recordings-to-presets-and-list-a-presets-recordings.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T5",

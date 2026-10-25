@@ -81,6 +81,15 @@ export function createRecordingsRepo(db: Db) {
   const nextPage = db.prepare("SELECT * FROM audio_generations WHERE id < ? ORDER BY id DESC LIMIT ?");
   // One model's recordings (audio_generations_by_model, migration 0014).
   const modelFirstPage = db.prepare("SELECT * FROM audio_generations WHERE model = ? ORDER BY id DESC LIMIT ?");
+  // One voice preset's recordings through its link index (voice_preset_recordings_by_preset, migration 0016).
+  const presetFirstPage = db.prepare(
+    `SELECT a.* FROM voice_preset_recordings l JOIN audio_generations a ON a.id = l.audio_generation_id
+      WHERE l.preset_id = ? ORDER BY l.audio_generation_id DESC LIMIT ?`,
+  );
+  const presetNextPage = db.prepare(
+    `SELECT a.* FROM voice_preset_recordings l JOIN audio_generations a ON a.id = l.audio_generation_id
+      WHERE l.preset_id = ? AND l.audio_generation_id < ? ORDER BY l.audio_generation_id DESC LIMIT ?`,
+  );
   const modelNextPage = db.prepare(
     "SELECT * FROM audio_generations WHERE model = ? AND id < ? ORDER BY id DESC LIMIT ?",
   );
@@ -117,8 +126,9 @@ export function createRecordingsRepo(db: Db) {
     "UPDATE audio_generations SET cost_status = @status, cost_micros = @micros WHERE id = @id AND cost_status = 'pending'",
   );
 
-  const insertTx = db.transaction((rec: RecordingRecord, commitFile: () => void) => {
+  const insertTx = db.transaction((rec: RecordingRecord, commitFile: () => void, afterInsert?: () => void) => {
     insertStmt.run({ ...rec, settings: JSON.stringify(rec.settings) });
+    afterInsert?.(); // e.g. the preset link (voice-presets ADR-0058)
     commitFile(); // last step: if it throws, the transaction rolls back (ADR-0042)
   });
   const addTagTx = db.transaction((id: string, tag: string) => {
@@ -140,8 +150,8 @@ export function createRecordingsRepo(db: Db) {
 
   return {
     /** Inserts a recording in one transaction whose last step moves its audio file into place. */
-    insertAtomic(rec: RecordingRecord, commitFile: () => void): void {
-      insertTx(rec, commitFile);
+    insertAtomic(rec: RecordingRecord, commitFile: () => void, afterInsert?: () => void): void {
+      insertTx(rec, commitFile, afterInsert);
     },
 
     get(id: string): RecordingRecord | undefined {
@@ -150,18 +160,22 @@ export function createRecordingsRepo(db: Db) {
     },
 
     /** Newest first; `cursor` = the last id shown, the page continues after it; `model` = one exact model id. */
-    list(q: { cursor?: string; limit: number; model?: string }): {
+    list(q: { cursor?: string; limit: number; model?: string; preset?: string }): {
       items: RecordingRecord[];
       nextCursor: string | null;
     } {
       const raw =
-        q.model !== undefined
+        q.preset !== undefined
           ? q.cursor
-            ? modelNextPage.all(q.model, q.cursor, q.limit + 1)
-            : modelFirstPage.all(q.model, q.limit + 1)
-          : q.cursor
-            ? nextPage.all(q.cursor, q.limit + 1)
-            : firstPage.all(q.limit + 1);
+            ? presetNextPage.all(q.preset, q.cursor, q.limit + 1)
+            : presetFirstPage.all(q.preset, q.limit + 1)
+          : q.model !== undefined
+            ? q.cursor
+              ? modelNextPage.all(q.model, q.cursor, q.limit + 1)
+              : modelFirstPage.all(q.model, q.limit + 1)
+            : q.cursor
+              ? nextPage.all(q.cursor, q.limit + 1)
+              : firstPage.all(q.limit + 1);
       const rows = raw.map((r) => Row.parse(r));
       const items = rows.slice(0, q.limit);
       return { items, nextCursor: rows.length > q.limit ? (items.at(-1)?.id ?? null) : null };

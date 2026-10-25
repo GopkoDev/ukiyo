@@ -56,12 +56,22 @@ export type SpeechModelsResponse = z.infer<typeof SpeechModelsResponse>;
 /** Longest text any family accepts (ElevenLabs Flash v2.5); the per-model limit is checked by the service. */
 export const MAX_TEXT = 40_000;
 
+/** The voice preset a recording is linked to, as a recording shows it (voice-presets ADR-0057). */
+export const PresetRef = z.object({ id: z.string(), name: z.string() });
+export type PresetRef = z.infer<typeof PresetRef>;
+
 export const StartSpeechRequest = z.object({
   text: z.string().trim().min(1, { error: "Enter some text" }).max(MAX_TEXT),
   model: z.string().min(1).max(100),
   /** Absent or null = the provider's default voice (only for models that list none). */
   voice: z.string().min(1).max(100).nullable().default(null),
   settings: VoiceSettings.default({}),
+  /** The applied, unchanged voice preset; linked only when the setup equals it (voice-presets ADR-0058). */
+  presetId: z
+    .string()
+    .regex(/^[0-9A-Z]{26}$/)
+    .nullable()
+    .default(null),
 });
 export type StartSpeechRequest = z.input<typeof StartSpeechRequest>;
 
@@ -94,6 +104,8 @@ export const Recording = z.object({
   tags: z.array(Tag).max(MAX_TAGS),
   /** The Owner's one comment, or none. */
   comment: Comment.nullable(),
+  /** The voice preset it was made with (voice-presets AC-04), or none. */
+  preset: PresetRef.nullable().default(null),
 });
 export type Recording = z.infer<typeof Recording>;
 

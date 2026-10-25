@@ -101,19 +101,16 @@ export function createApp(deps: AppDeps, options: CreateAppOptions = {}) {
     now: deps.now,
     timers: deps.timers,
   });
+  const presetsRepo = createPresetsRepo(deps.db);
+  const presets = createPresetService({ repo: presetsRepo, speech, catalog: speechCatalog, now: deps.now });
   const audio = createAudioService({
     speech,
     catalog: speechCatalog,
     repo: recordings,
+    presets: presetsRepo,
     files,
     costSync: audioCostSync,
     timeoutMs: deps.generationTimeoutMs ?? GENERATION_TIMEOUT_MS,
-    now: deps.now,
-  });
-  const presets = createPresetService({
-    repo: createPresetsRepo(deps.db),
-    speech,
-    catalog: speechCatalog,
     now: deps.now,
   });
   registerAudioRoutes(api, { service: audio, presets });

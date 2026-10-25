@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { type SpeechModel, settingsFor, VoiceSettings } from "./speech";
 
+export { PresetRef } from "./speech";
+
 // Voice presets (spec voice-presets): rules shared by the Speech page and the server (sad.md §4 items 2–3, ADR-0058).
 export const MAX_PRESET_NAME = 60;
 
@@ -116,7 +118,3 @@ export const UpdatePresetRequest = z
     path: ["model"],
   });
 export type UpdatePresetRequest = z.input<typeof UpdatePresetRequest>;
-
-/** The preset a recording is linked to, as a recording shows it. */
-export const PresetRef = z.object({ id: z.string(), name: z.string() });
-export type PresetRef = z.infer<typeof PresetRef>;

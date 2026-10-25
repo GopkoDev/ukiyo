@@ -12,6 +12,7 @@ import { createSpeechCatalog } from "../providers/speech-catalog";
 import type { SpeechInput, SpeechProvider, SpeechResult } from "../providers/speech-port";
 import { speechRegistryOf } from "../providers/speech-port";
 import { createFileStore } from "../storage/file-store";
+import { createPresetsRepo } from "./presets-repo";
 import { createRecordingsRepo } from "./repo";
 import { createAudioService } from "./service";
 
@@ -79,6 +80,7 @@ function setup(opts: Parameters<typeof fakeProvider>[0] & { timeoutMs?: number }
     timers: clock.timers,
   });
   const service = createAudioService({
+    presets: createPresetsRepo(t.db),
     speech,
     catalog: createSpeechCatalog(speech),
     repo,
@@ -266,6 +268,7 @@ describe("audio service — refusals and failures", () => {
     const first = await service.start({ text: "Hi", model: "elevenlabs/eleven-v3", voice: "george" });
     // Same id minted again → the commit finds the file already there and throws inside the transaction.
     const clash = createAudioService({
+      presets: createPresetsRepo(t.db),
       ...{ speech: speechRegistryOf([fakeProvider().p]) },
       catalog: createSpeechCatalog(speechRegistryOf([fakeProvider().p])),
       repo,
@@ -333,6 +336,7 @@ describe("audio service — list, delete, file", () => {
     const forgotten: string[] = [];
     const costSync = createCostSync({ repo, lookupFor: () => undefined });
     const service = createAudioService({
+      presets: createPresetsRepo(t.db),
       speech,
       catalog: createSpeechCatalog(speech),
       repo,
@@ -358,6 +362,7 @@ describe("audio service — list, delete, file", () => {
     const forgotten: string[] = [];
     const costSync = createCostSync({ repo, lookupFor: () => undefined });
     const service = createAudioService({
+      presets: createPresetsRepo(t.db),
       speech,
       catalog: createSpeechCatalog(speech),
       repo,
@@ -384,6 +389,7 @@ describe("audio service — list, delete, file", () => {
       },
     } as typeof real;
     const service = createAudioService({
+      presets: createPresetsRepo(t.db),
       speech,
       catalog: createSpeechCatalog(speech),
       repo,

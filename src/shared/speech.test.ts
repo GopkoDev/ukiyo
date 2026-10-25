@@ -65,6 +65,7 @@ describe("contract schemas", () => {
       model: "fish-audio/s1",
       voice: null,
       settings: {},
+      presetId: null,
     });
     expect(StartSpeechRequest.safeParse({ text: "   ", model: "m" }).success).toBe(false);
     expect(StartSpeechRequest.safeParse({ text: "hi", model: "m", voice: "" }).success).toBe(false);
@@ -96,7 +97,11 @@ describe("contract schemas", () => {
       tags: ["intro"],
       comment: { body: "keep", updatedAt: "2026-10-25T10:00:00.000Z" },
     };
-    expect(Recording.parse(r)).toEqual(r);
+    expect(Recording.parse(r)).toEqual({ ...r, preset: null }); // an answer without a preset reads as unlinked
+    expect(Recording.parse({ ...r, preset: { id: "01P", name: "Narrator" } }).preset).toEqual({
+      id: "01P",
+      name: "Narrator",
+    });
     expect(Recording.safeParse({ ...r, mediaType: "audio/ogg" }).success).toBe(false);
   });
 });

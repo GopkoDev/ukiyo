@@ -8,14 +8,23 @@ import type { AudioService } from "./service";
 export type AudioRouteDeps = { service: AudioService; presets: PresetService };
 
 const Id = z.string().regex(/^[0-9A-Z]{26}$/);
-const PageQuery = z.object({
-  cursor: z
-    .string()
-    .regex(/^[0-9A-Z]{1,26}$/)
-    .optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(10),
-  model: z.string().min(1).max(100).optional(),
-});
+const PageQuery = z
+  .object({
+    cursor: z
+      .string()
+      .regex(/^[0-9A-Z]{1,26}$/)
+      .optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(10),
+    model: z.string().min(1).max(100).optional(),
+    preset: z
+      .string()
+      .regex(/^[0-9A-Z]{26}$/)
+      .optional(),
+  })
+  .refine((q) => q.model === undefined || q.preset === undefined, {
+    error: "Choose a model or a preset",
+    path: ["preset"],
+  });
 const GroupsQuery = z.object({ latest: z.coerce.number().int().min(0).max(24).default(0) });
 
 async function jsonBody(req: { json(): Promise<unknown> }): Promise<unknown> {

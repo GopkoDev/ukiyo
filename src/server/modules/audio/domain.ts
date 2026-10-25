@@ -1,4 +1,4 @@
-import type { CostStatus, Recording, SpeechModel } from "../../../shared/speech";
+import type { CostStatus, PresetRef, Recording, SpeechModel } from "../../../shared/speech";
 import { AppError } from "../../lib/errors";
 import type { RecordingCuration, RecordingRecord } from "./repo";
 
@@ -28,6 +28,7 @@ export function toRecordingDto(
   r: RecordingRecord,
   displayName: string | undefined,
   curation: RecordingCuration = NO_CURATION,
+  preset: PresetRef | null = null,
 ): Recording {
   return {
     id: r.id,
@@ -47,6 +48,7 @@ export function toRecordingDto(
     url: recordingFileUrl(r.id),
     tags: curation.tags,
     comment: curation.comment,
+    preset,
   };
 }
 

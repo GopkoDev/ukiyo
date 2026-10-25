@@ -1,6 +1,7 @@
 import { z } from "zod";
+import type { PresetRef } from "../../../shared/speech";
 import { VoiceSettings } from "../../../shared/speech";
-import type { PresetRef, PresetStats } from "../../../shared/voice-presets";
+import type { PresetStats } from "../../../shared/voice-presets";
 import type { Db } from "../../db/client";
 
 /** One row of `voice_presets` (migration 0016) with its stats over the linked recordings, parsed before it leaves. */

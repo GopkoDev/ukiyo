@@ -58,6 +58,7 @@ const recording = (over: Partial<Recording> = {}): Recording => ({
   url: "/api/audio/recordings/01N0000000000000000000000A/file",
   tags: [],
   comment: null,
+  preset: null,
   ...over,
 });
 

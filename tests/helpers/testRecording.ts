@@ -21,6 +21,7 @@ export function testRecording(i: number, over: Partial<Recording> = {}): Recordi
     url: `/api/audio/recordings/${id}/file`,
     tags: [],
     comment: null,
+    preset: null,
     ...over,
   };
 }
