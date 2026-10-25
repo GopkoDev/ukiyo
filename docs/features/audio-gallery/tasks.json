@@ -78,7 +78,7 @@
         "src/web/features/gallery/Gallery.tsx"
       ],
       "file": "docs/features/audio-gallery/tasks/T5-extract-media-gallery-primitives.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T6",

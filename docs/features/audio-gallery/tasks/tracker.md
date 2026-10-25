@@ -11,7 +11,7 @@
 | T2 | Add model filter, model groups, stored names and tag/comment statements to the recordings repo | infra | agent | M | T1 | done | COMMIT |
 | T3 | Expose model filter, model groups and curation through the audio service, routes and shared schemas | ports | agent | M | T2 | done | COMMIT |
 | T4 | Add the audio gallery's server timing tests | tests | agent | S | T3 | done | COMMIT |
-| T5 | Extract the media-neutral gallery primitives into a shared media-gallery layer | ui | agent | S | — | todo | — |
+| T5 | Extract the media-neutral gallery primitives into a shared media-gallery layer | ui | agent | S | — | done | COMMIT |
 | T6 | Extract the dialog stepping engine and frame from the image dialog | ui | agent | M | T5 | todo | — |
 | T7 | Extract the notes card from the image Notes | ui | agent | S | T5 | todo | — |
 | T8 | Add the recording detail route and let sections own their detail renderers | wiring | agent | M | — | todo | — |

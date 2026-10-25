@@ -9,8 +9,8 @@ files_hint: ["src/web/features/media-gallery/", "src/web/features/gallery/Dialog
 owner: "agent (sdd:implement)"
 estimate: "S"
 context_budget: "S"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T5 — Extract the media-neutral gallery primitives into a shared media-gallery layer
