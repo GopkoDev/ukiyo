@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useId } from "react";
+import { useEffect, useId } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/router";
 import type { RecordingModelGroup } from "../../../../shared/speech";
@@ -7,13 +7,15 @@ import { AUDIO_GALLERY_PATH, audioViewKey, audioViewSearch } from "./audioGaller
 import { recordingModelsOptions } from "./queries";
 import { RecordingCard } from "./RecordingCard";
 import { SPEECH_PATH } from "./reuse";
-import { audioScroll } from "./useAudioGalleryView";
+import { audioNotice, audioScroll } from "./useAudioGalleryView";
 
 const plural = (n: number) => `${n} recording${n === 1 ? "" : "s"}`;
 
 /** SCR-03 — one section per speech model, newest model first: its count and its four latest cards. */
 export function AudioByModel() {
   const q = useQuery(recordingModelsOptions);
+  const deleted = audioNotice.useShown(); // the dialog closed onto «By model» after a delete
+  useEffect(() => audioNotice.clear, []);
   audioScroll.useSaved(JSON.stringify(audioViewKey({ kind: "models" })), q.data !== undefined);
   if (q.isPending) return <p className="text-muted-foreground text-sm">Loading…</p>;
   if (q.isError && !q.data)
@@ -28,6 +30,7 @@ export function AudioByModel() {
   if (q.data.models.length === 0)
     return (
       <div className="flex flex-col items-start gap-3">
+        {deleted && <p className="text-muted-foreground text-sm">Recording deleted.</p>}
         <p className="text-muted-foreground">No recordings yet.</p>
         <Button asChild>
           <Link to={SPEECH_PATH}>Go to Speech</Link>
@@ -36,6 +39,7 @@ export function AudioByModel() {
     );
   return (
     <div className="flex flex-col gap-8">
+      {deleted && <p className="text-muted-foreground text-sm">Recording deleted.</p>}
       {q.isError && (
         <div className="flex items-center justify-between gap-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3">
           <p className="text-sm">These may be out of date.</p>

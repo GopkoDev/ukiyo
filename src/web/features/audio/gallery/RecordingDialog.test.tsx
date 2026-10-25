@@ -4,7 +4,7 @@ import { App } from "@/App";
 import { ApiError, api } from "@/lib/api";
 import { mediaDialogState } from "@/lib/router";
 import { renderWithQuery } from "@/test-utils";
-import { testRecording as rec } from "./testRecording";
+import { testRecording as rec } from "../../../../../tests/helpers/testRecording";
 import { resetAudioGallery } from "./useAudioGalleryView";
 
 vi.mock("@/lib/api", async (orig) => ({

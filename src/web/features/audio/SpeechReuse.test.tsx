@@ -2,9 +2,9 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, api } from "@/lib/api";
 import { renderWithQuery } from "@/test-utils";
+import { testRecording } from "../../../../tests/helpers/testRecording";
 import type { Recording, SpeechModel } from "../../../shared/speech";
 import { controlsFor } from "../../../shared/speech-models";
-import { testRecording } from "./gallery/testRecording";
 import { SpeechPage } from "./SpeechPage";
 
 vi.mock("@/lib/api", async (orig) => ({
@@ -114,5 +114,18 @@ describe("Reuse from the audio gallery (SCR-08, AC-16, AC-17)", () => {
     expect(await screen.findByText("Wait for the current recording to finish, then reuse.")).toBeVisible();
     expect(text()).toHaveValue("Being generated");
     await act(async () => finish(testRecording(9)));
+  });
+
+  it("ignores the image gallery's reuse address while it stays mounted elsewhere (review R1)", async () => {
+    at("");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Model" })).toHaveTextContent("Eleven v3"));
+    act(() => {
+      window.history.pushState(null, "", "/?reuse=01G00000000000000000000001&output=1");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await act(async () => {});
+    expect(m.recording).not.toHaveBeenCalled();
+    expect(window.location.search).toBe("?reuse=01G00000000000000000000001&output=1");
+    expect(screen.queryByText("This recording no longer exists.")).toBeNull();
   });
 });

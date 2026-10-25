@@ -2,9 +2,9 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/lib/api";
 import { renderWithQuery } from "@/test-utils";
+import { testRecording as rec } from "../../../../../tests/helpers/testRecording";
 import { AudioGalleryPage } from "./AudioGallery";
 import { audioDialogViews } from "./audioGalleryView";
-import { testRecording as rec } from "./testRecording";
 import { resetAudioGallery } from "./useAudioGalleryView";
 
 vi.mock("@/lib/api", async (orig) => ({

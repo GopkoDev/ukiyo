@@ -5,8 +5,8 @@ import { ApiError, api } from "@/lib/api";
 import { isDialogVisit, useRoute } from "@/lib/router";
 import { renderWithQuery } from "@/test-utils";
 import { intersectAll } from "../../../../../tests/helpers/intersection";
+import { testRecording as rec } from "../../../../../tests/helpers/testRecording";
 import { AudioGalleryPage } from "./AudioGallery";
-import { testRecording as rec } from "./testRecording";
 import { resetAudioGallery } from "./useAudioGalleryView";
 
 vi.mock("@/lib/api", async (orig) => ({

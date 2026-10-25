@@ -12,6 +12,7 @@ import { replace, useRoute } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import type { Recording, SpeechModel } from "../../../shared/speech";
 import { onRecordingDeleted } from "./gallery/patchRecordings";
+import { SPEECH_PATH } from "./gallery/reuse";
 import { limitText, ModelSelect } from "./ModelSelect";
 import { SPEECH_CREDITS_KEY as CREDITS_KEY, SPEECH_MODELS_KEY as MODELS_KEY, RECORDINGS_KEY } from "./queryKeys";
 import { RecentRecordings } from "./RecentRecordings";
@@ -139,7 +140,10 @@ export function SpeechPage() {
   // Reuse handed over from the audio gallery: `?reuse=<id>` on arrival, applied once the recording and the model
   // list are known, never while a request is in flight (audio-gallery ADR-0053, AC-16/AC-17).
   const route = useRoute();
-  const reuseMark = route.name === "page" ? new URLSearchParams(route.search).get("reuse") : null;
+  // Only Speech's own address: the page stays mounted while other sections show, and the image gallery uses
+  // `/?reuse=` for its own reuse (review R1).
+  const onSpeech = route.name === "page" && route.pathname.replace(/(.)\/$/, "$1") === SPEECH_PATH;
+  const reuseMark = onSpeech ? new URLSearchParams(route.search).get("reuse") : null;
   const [reuseId, setReuseId] = useState<string | null>(null);
   const [reuseNote, setReuseNote] = useState<string | null>(null);
   const [asking, setAsking] = useState<Recording | null>(null);
@@ -164,7 +168,7 @@ export function SpeechPage() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the recording or the model list arrives
   useEffect(() => {
     if (reuseId === null) return;
-    if (reuseRec.isError) {
+    if (reuseRec.isError && !reuseRec.isFetching) {
       setReuseNote(
         reuseRec.error instanceof ApiError && reuseRec.error.status === 404
           ? "This recording no longer exists."
@@ -173,12 +177,17 @@ export function SpeechPage() {
       setReuseId(null);
       return;
     }
-    if (!reuseRec.data || !models.data) return; // wait (the models error shows its own Try again)
+    if (!reuseRec.data || reuseRec.isFetching || !models.data) return; // wait (a models error shows its own Try again)
     const r = reuseRec.data;
     setReuseId(null);
+    if (inFlight.current) {
+      // Generate was pressed while the recording loaded: never swap the form under a request (review R2).
+      setReuseNote("Wait for the current recording to finish, then reuse.");
+      return;
+    }
     if (draft.text.trim() && draft.text !== r.text) setAsking(r);
     else applyReuse(r);
-  }, [reuseId, reuseRec.data, reuseRec.isError, models.data]);
+  }, [reuseId, reuseRec.data, reuseRec.isError, reuseRec.isFetching, models.data]);
 
   const unconfigured = notConfigured(credits.error);
   const model = draft.model;
@@ -213,7 +222,6 @@ export function SpeechPage() {
             draft.reuse(r);
             setResult({ recording: r, fresh: false });
           }}
-          onDeleted={(id) => setResult((current) => (current?.recording.id === id ? null : current))}
         />
       </TabsContent>
     </Tabs>

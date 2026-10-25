@@ -19,12 +19,7 @@ const PENDING_REFRESH_MS = 10_000;
  * SCR-04 — the ten latest recordings, newest first: reuse, play, download, delete. While any cost is pending the
  * list refreshes every 10 s until it settles (spec AC-13, AC-15).
  */
-export function RecentRecordings(props: {
-  draftText: string;
-  onReuse: (r: Recording) => void;
-  /** A recording was deleted — the page drops it if it shows it as the latest result (AC-16). */
-  onDeleted?: (id: string) => void;
-}) {
+export function RecentRecordings(props: { draftText: string; onReuse: (r: Recording) => void }) {
   const recent = useQuery({
     queryKey: RECENT_RECORDINGS_KEY,
     queryFn: () => api.recordings(undefined, RECENT_LIMIT),
@@ -76,7 +71,7 @@ export function RecentRecordings(props: {
                   Download
                 </a>
               </Button>
-              <DeleteRecording recording={r} onDeleted={props.onDeleted} />
+              <DeleteRecording recording={r} />
             </div>
           </li>
         ))}

@@ -39,6 +39,7 @@ export function DeleteRecording({
     patchRecordings(qc, recording.id, "remove"); // gone from every view at once (AC-11, AC-18)
     qc.invalidateQueries({ queryKey: RECORDINGS_KEY });
     onDeleted?.(recording.id);
+    qc.removeQueries({ queryKey: ["recording", recording.id] });
   };
   const del = useMutation({
     mutationFn: () => api.deleteRecording(recording.id),
@@ -53,8 +54,11 @@ export function DeleteRecording({
     },
     onError: (err) => {
       if (err instanceof ApiError && err.code === "NOT_FOUND") {
-        setOpen(false); // already gone — drop it quietly
-        done();
+        // Deleted elsewhere: drop it from the lists and let the detail say it no longer exists (AC-12, review S1-3).
+        setOpen(false);
+        patchRecordings(qc, recording.id, "remove");
+        qc.invalidateQueries({ queryKey: RECORDINGS_KEY });
+        qc.invalidateQueries({ queryKey: ["recording", recording.id] });
       }
     },
   });

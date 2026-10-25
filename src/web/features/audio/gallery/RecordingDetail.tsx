@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiError } from "@/lib/api";
-import { formatDateTime, formatDuration } from "@/lib/format";
+import { excerpt, formatDateTime, formatDuration, formatUsdSig } from "@/lib/format";
 import { Link, navigate } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import type { Recording } from "../../../../shared/speech";
@@ -34,7 +34,15 @@ function Player({ r }: { r: Recording }) {
         <p className="text-muted-foreground text-sm">Audio unavailable</p>
       ) : (
         // biome-ignore lint/a11y/useMediaCaption: generated speech has no caption track
-        <audio key={r.id} controls preload="none" src={r.url} onError={() => setBroken(true)} className="w-full" />
+        <audio
+          key={r.id}
+          controls
+          preload="none"
+          src={r.url}
+          onError={() => setBroken(true)}
+          className="w-full"
+          aria-label={`Play «${excerpt(r.text, 40)}»`}
+        />
       )}
       <Button variant="outline" size="sm" asChild className="self-start">
         <a href={`${r.url}?download=1`} download>
@@ -91,6 +99,9 @@ export function RecordingBody({ r, layout }: { r: Recording; layout: "dialog" | 
               <Badge variant={r.costStatus === "known" ? "secondary" : "outline"}>{r.costStatus}</Badge>
             </span>
           </Row>
+          {r.estimateMicros !== null && (
+            <Row label="Estimate">≈ {formatUsdSig(r.estimateMicros / 1_000_000)} (before generating)</Row>
+          )}
         </dl>
       </CardContent>
     </Card>
@@ -133,7 +144,7 @@ export function RecordingPage({ id }: { id: string }) {
       <div className="flex items-center justify-between gap-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4">
         <p className="text-sm">Couldn't load this recording</p>
         <Button variant="outline" size="sm" onClick={() => q.refetch()}>
-          Retry
+          Try again
         </Button>
       </div>
     );

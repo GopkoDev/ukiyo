@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "@/App";
 import { api } from "@/lib/api";
 import { renderWithQuery } from "@/test-utils";
+import { testRecording as rec } from "../../../../../tests/helpers/testRecording";
 import type { Recording, SpeechModel } from "../../../../shared/speech";
 import { controlsFor } from "../../../../shared/speech-models";
-import { testRecording as rec } from "./testRecording";
 import { resetAudioGallery } from "./useAudioGalleryView";
 
 vi.mock("@/lib/api", async (orig) => ({

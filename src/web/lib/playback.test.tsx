@@ -29,10 +29,11 @@ describe("playback coordinator (ADR-0050)", () => {
     const a = player();
     const b = player();
     a.play();
+    Object.defineProperty(a.el, "currentTime", { value: 3.5, writable: true });
     b.play();
     expect(a.el.pause).toHaveBeenCalledTimes(1);
     expect(b.el.pause).not.toHaveBeenCalled();
-    expect(a.el.currentTime).toBe(0); // pausing never rewinds
+    expect(a.el.currentTime).toBe(3.5); // pausing never rewinds
   });
 
   it("pauseAll pauses whatever plays (a route change)", () => {

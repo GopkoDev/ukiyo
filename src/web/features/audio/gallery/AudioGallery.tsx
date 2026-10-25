@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { isDialogVisit, Link, replace, useRoute } from "@/lib/router";
 import { usePagingSentinel } from "../../media-gallery/usePagingSentinel";
@@ -62,6 +62,12 @@ function Grid({ view }: { view: AudioListView }) {
     fetchNextPage,
   });
 
+  // The model's display name outlives its last recording, for «No recordings with <model>» after a delete.
+  const knownName = useRef<string | undefined>(undefined);
+  const seenName =
+    (one && models.data?.models.find((g) => g.model === one.model)?.modelName) ?? q.data?.pages[0]?.items[0]?.modelName;
+  if (seenName) knownName.current = seenName;
+
   if (q.isPending) return <p className="text-muted-foreground text-sm">Loading…</p>;
   if (q.isError && !q.data)
     return (
@@ -76,7 +82,7 @@ function Grid({ view }: { view: AudioListView }) {
   const items = q.data.pages.flatMap((p) => p.items);
   const notice = (justDeleted || handedOver) && <p className="text-muted-foreground text-sm">Recording deleted.</p>;
   const group = one ? models.data?.models.find((g) => g.model === one.model) : undefined;
-  const name = group?.modelName ?? items[0]?.modelName ?? one?.model;
+  const name = group?.modelName ?? items[0]?.modelName ?? knownName.current ?? one?.model;
   if (items.length === 0 && one)
     return (
       <div className="flex flex-col items-start gap-3">

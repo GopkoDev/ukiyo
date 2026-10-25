@@ -183,4 +183,46 @@ describe("audio gallery routes", () => {
     const images = GenerationPage.parse(await (await a.app.request("/api/generations")).json());
     expect(images.items.every((g) => !g.id.startsWith("01R"))).toBe(true);
   });
+
+  it("keeps recording tags apart from image tags, even for the same word (AC-10)", async () => {
+    const a = app();
+    seedRecording(a.db, a.dataDir, { id: id(1), tags: ["intro"] });
+    const g = seedGeneration(a.db, a.dataDir, { tags: ["intro"] });
+    await a.app.request(`/api/audio/recordings/${id(1)}/tags/intro`, { method: "DELETE" });
+    await a.app.request(`/api/audio/recordings/${id(1)}/tags`, json("POST", { tag: "audio only" }));
+    const gen = (await (await a.app.request(`/api/generations/${g.id}`)).json()) as { tags: string[] };
+    expect(gen.tags).toEqual(["intro"]);
+    const r = Recording.parse(await (await a.app.request(`/api/audio/recordings/${id(1)}`)).json());
+    expect(r.tags).toEqual(["audio only"]);
+  });
+});
+
+describe("boot catalog warm-up (ADR-0052)", () => {
+  const speechCalls = (f: ReturnType<typeof catalog>) => f.calls.filter((u) => u.includes("output_modalities=speech"));
+
+  it("reads the catalog once in the background when a recording has no stored name, and never otherwise", async () => {
+    const f = catalog();
+    t = createTestApp({ openRouterApiKey: "sk-test" }, { fetch: f });
+    expect(speechCalls(f)).toHaveLength(0); // empty DB: nothing to name
+    seedRecording(t.db, t.dataDir, { id: id(1), modelName: null });
+    t.restart();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(speechCalls(f)).toHaveLength(1);
+    t.db.prepare("UPDATE audio_generations SET model_name = 'Named'").run();
+    f.calls.length = 0;
+    t.restart();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(speechCalls(f)).toHaveLength(0);
+  });
+
+  it("swallows an unreachable catalog at boot", async () => {
+    const failing = (async () => {
+      throw new TypeError("network down");
+    }) as unknown as typeof fetch;
+    t = createTestApp({ openRouterApiKey: "sk-test" }, { fetch: failing });
+    seedRecording(t.db, t.dataDir, { id: id(1), modelName: null });
+    expect(() => t?.restart()).not.toThrow();
+    await new Promise((r) => setTimeout(r, 10));
+    expect((await t.app.request("/api/audio/recordings")).status).toBe(200);
+  });
 });

@@ -1,4 +1,4 @@
-import type { Recording } from "../../../../shared/speech";
+import type { Recording } from "../../src/shared/speech";
 
 /** A test recording (no PII). */
 export function testRecording(i: number, over: Partial<Recording> = {}): Recording {

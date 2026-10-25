@@ -342,10 +342,12 @@ describe("audio service — list, delete, file", () => {
       costSync: { ...costSync, forget: (id: string) => forgotten.push(id) } as typeof costSync,
       timeoutMs: 1000,
     });
-    const rec = seedRecording(t.db, t.dataDir);
+    const rec = seedRecording(t.db, t.dataDir, { tags: ["intro"], comment: "keep" });
     const err = await appError(service.remove(rec.id));
     expect(err).toMatchObject({ code: "STORAGE_ERROR", status: 500, message: "Couldn't delete this recording" });
     expect(repo.get(rec.id)).toBeDefined();
+    // its tags and comment stay with it (audio-gallery AC-12)
+    expect(repo.curationOf([rec.id]).get(rec.id)).toMatchObject({ tags: ["intro"], comment: { body: "keep" } });
     expect(existsSync(join(t.dataDir, rec.filePath))).toBe(true);
     expect(forgotten).toEqual([]);
   });

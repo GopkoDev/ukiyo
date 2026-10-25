@@ -68,7 +68,7 @@ export function App({ sections = SECTIONS }: { sections?: readonly Section[] }) 
   useEffect(() => pauseAll(document), [address]);
 
   useEffect(() => {
-    document.title = current ? `${current.label} · Ukiyo` : "Page not found · Ukiyo";
+    document.title = current ? `${current.accessibleName ?? current.label} · Ukiyo` : "Page not found · Ukiyo";
   }, [current]);
 
   // A former address (alias) opens its section and the address bar shows the current one — no history entry (ADR-0046).
