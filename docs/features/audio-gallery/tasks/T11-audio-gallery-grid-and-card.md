@@ -9,8 +9,8 @@ files_hint: ["src/web/features/audio/gallery/AudioGallery.tsx", "src/web/feature
 owner: "agent (sdd:implement)"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T11 — Build the Audio → Gallery section: grid, recording card, model choice and states

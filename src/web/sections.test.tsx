@@ -13,6 +13,7 @@ describe("sections registry", () => {
       ["gallery", "/gallery", "Gallery", "image"],
       ["models", "/models", "Models", "image"],
       ["speech", "/audio/speech", "Speech", "audio"],
+      ["audio-gallery", "/audio/gallery", "Gallery", "audio"],
     ]);
     expect(SECTION_GROUPS.map((g) => [g.id, g.label])).toEqual([
       ["image", "Image"],
@@ -101,7 +102,7 @@ describe("sections registry", () => {
       within(audio)
         .getAllByRole("link")
         .map((l) => l.textContent),
-    ).toEqual(["Speech"]);
+    ).toEqual(["Speech", "Gallery"]);
     expect(within(image).getByRole("link", { name: "Models" })).toHaveAttribute("aria-current", "page");
     expect(within(audio).getByRole("link", { name: "Speech" })).toHaveAttribute("href", "/audio/speech");
     window.history.replaceState(null, "", "/");

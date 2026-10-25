@@ -1,5 +1,6 @@
-import { AudioLines, Boxes, Images, type LucideIcon, Sparkles } from "lucide-react";
+import { AudioLines, Boxes, Images, Library, type LucideIcon, Sparkles } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
+import { AudioGalleryPage } from "@/features/audio/gallery/AudioGallery";
 import { SpeechPage } from "@/features/audio/SpeechPage";
 import { Gallery } from "@/features/gallery/Gallery";
 import { GalleryViews } from "@/features/gallery/GalleryViews";
@@ -23,6 +24,8 @@ export type Section = {
   id: string;
   path: string;
   label: string;
+  /** The entry's accessible name when its label alone is ambiguous («Gallery» in both groups → «Audio gallery»). */
+  accessibleName?: string;
   icon: LucideIcon;
   page: () => ReactNode;
   /** Its block in the navigation bar; default «image» (ADR-0046). */
@@ -101,6 +104,16 @@ export const SECTIONS: readonly Section[] = [
     icon: AudioLines,
     page: SpeechPage,
     keepMounted: "after-visit",
+  },
+  {
+    id: "audio-gallery",
+    path: "/audio/gallery",
+    group: "audio",
+    label: "Gallery",
+    accessibleName: "Audio gallery",
+    icon: Library,
+    page: AudioGalleryPage,
+    owns: (route) => route.name === "recording",
   },
 ];
 

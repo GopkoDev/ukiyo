@@ -173,7 +173,7 @@
         "src/web/features/audio/gallery/AudioGallery.test.tsx"
       ],
       "file": "docs/features/audio-gallery/tasks/T11-audio-gallery-grid-and-card.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T12",

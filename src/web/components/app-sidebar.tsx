@@ -63,7 +63,12 @@ export function AppSidebar({ sections, current }: { sections: readonly Section[]
                     return (
                       <SidebarMenuItem key={s.id} className="relative">
                         <SidebarMenuButton asChild isActive={isCurrent} tooltip={s.label}>
-                          <Link to={s.path} aria-current={isCurrent ? "page" : undefined} onClick={close}>
+                          <Link
+                            to={s.path}
+                            aria-current={isCurrent ? "page" : undefined}
+                            aria-label={s.accessibleName}
+                            onClick={close}
+                          >
                             <Icon aria-hidden />
                             <span>{s.label}</span>
                             {Indicator && (

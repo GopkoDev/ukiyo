@@ -13,6 +13,8 @@ vi.mock("@/lib/api", async (orig) => ({
 }));
 
 const R = "01R00000000000000000000001";
+/** The registry without the real audio gallery, so the stub section below owns the recording route. */
+const BASE = SECTIONS.filter((s) => s.id !== "audio-gallery");
 const things: Section = {
   id: "things",
   path: "/audio/gallery",
@@ -39,7 +41,7 @@ describe("detail routes per section (ADR-0048)", () => {
   });
 
   it("a recording address is never owned by the image Gallery, and a generation address never by the audio one", () => {
-    const sections = [...SECTIONS, things];
+    const sections = [...BASE, things];
     expect(sectionFor({ name: "recording", id: R }, sections)?.id).toBe("things");
     expect(sectionFor({ name: "detail", id: R }, sections)?.id).toBe("gallery");
   });
@@ -55,7 +57,7 @@ describe("detail routes per section (ADR-0048)", () => {
     vi.mocked(api.providers).mockResolvedValue({ providers: [] });
     vi.mocked(api.currentJob).mockResolvedValue({ job: null });
     window.history.replaceState(null, "", `/audio/recordings/${R}`);
-    renderWithQuery(<App sections={[...SECTIONS, things]} />);
+    renderWithQuery(<App sections={[...BASE, things]} />);
     expect(await screen.findByText(`thing page ${R}`)).toBeInTheDocument();
     expect(screen.getByText("Thing", { selector: "[aria-current='page']" })).toBeInTheDocument();
   });
@@ -69,7 +71,7 @@ describe("detail routes per section (ADR-0048)", () => {
       "",
       `/audio/recordings/${R}`,
     );
-    renderWithQuery(<App sections={[...SECTIONS, things]} />);
+    renderWithQuery(<App sections={[...BASE, things]} />);
     expect(await screen.findByText(`thing dialog ${R}`)).toBeInTheDocument();
     expect(screen.getByText("the things grid")).toBeInTheDocument();
   });
