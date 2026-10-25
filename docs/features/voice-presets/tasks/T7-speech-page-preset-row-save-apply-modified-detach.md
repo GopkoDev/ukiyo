@@ -9,8 +9,8 @@ files_hint: ["src/web/features/audio/presets/", "src/web/features/audio/useSpeec
 owner: "dmytro.hopko"
 estimate: "M"
 context_budget: "L"   # justified: one screen family; the ACs share one state machine
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T7 — Speech page preset row: save, apply, modified, detach, rename, delete

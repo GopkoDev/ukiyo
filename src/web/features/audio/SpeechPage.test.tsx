@@ -14,6 +14,7 @@ vi.mock("@/lib/api", async (orig) => ({
   api: {
     health: vi.fn(async () => ({ status: "ok" })),
     speechModels: vi.fn(),
+    voicePresets: vi.fn(async () => ({ presets: [] })),
     providers: vi.fn(),
     providerBalance: vi.fn(),
     recordings: vi.fn(),
@@ -154,6 +155,7 @@ describe("Speech page — generate", () => {
       model: "elevenlabs/eleven-v3",
       voice: "george",
       settings: { stability: 0.5, similarity: 0.75, style: 0 },
+      presetId: null, // no voice preset applied (voice-presets AC-05)
     });
     await act(async () => finish(recording()));
     const result = await screen.findByRole("region", { name: "Latest recording" });
@@ -177,7 +179,13 @@ describe("Speech page — generate", () => {
     fireEvent.change(text(), { target: { value: "Hi" } });
     fireEvent.click(generate());
     await waitFor(() =>
-      expect(m.createRecording).toHaveBeenCalledWith({ text: "Hi", model: "fish-audio/s1", voice: null, settings: {} }),
+      expect(m.createRecording).toHaveBeenCalledWith({
+        text: "Hi",
+        model: "fish-audio/s1",
+        voice: null,
+        settings: {},
+        presetId: null,
+      }),
     );
     expect(await screen.findByText("Provider default")).toBeVisible();
   });

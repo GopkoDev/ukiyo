@@ -60,6 +60,16 @@ export function useSpeechDraft(
     chars,
     tooLong: model ? chars > model.maxChars : false,
     notice,
+    /**
+     * Applies a voice preset's model, voice and settings, keeping the text (voice-presets AC-03): like a reuse, it
+     * overrides Ukiyo's own pick and may select a hidden model; the caller checks the model is offered.
+     */
+    apply(setup: { model: string; voice: string | null; settings: VoiceSettings }) {
+      setModelId(setup.model);
+      setChosenVoice(setup.voice);
+      setRaw(setup.settings);
+      setNotice(null);
+    },
     /** Puts a recording back into the form; a retired model keeps the current one (spec AC-15). */
     reuse(r: Recording) {
       setText(r.text);

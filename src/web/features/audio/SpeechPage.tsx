@@ -12,11 +12,15 @@ import { replace, useRoute } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import type { ModelPreference } from "../../../shared/models";
 import type { Recording, SpeechModel } from "../../../shared/speech";
+import { presetAvailability, presetMatches, type VoicePreset } from "../../../shared/voice-presets";
 import { balanceText, refreshBalances, useProviderBalance, useProviders } from "../balances/balances";
 import { useModelPreferences } from "../models/preferences";
 import { onRecordingDeleted } from "./gallery/patchRecordings";
 import { SPEECH_PATH } from "./gallery/reuse";
 import { limitText, ModelSelect } from "./ModelSelect";
+import { DeletePresetDialog, RenamePresetDialog, SavePresetDialog } from "./presets/PresetDialogs";
+import { PresetSelect, retiredText } from "./presets/PresetSelect";
+import { refreshPresetStats, useVoicePresets } from "./presets/queries";
 import { SPEECH_MODELS_KEY as MODELS_KEY, RECORDINGS_KEY } from "./queryKeys";
 import { RecentRecordings } from "./RecentRecordings";
 import { ReplaceTextDialog } from "./ReplaceTextDialog";
@@ -24,7 +28,7 @@ import { SpeechResult } from "./SpeechResult";
 import { estimateText } from "./speechCost";
 import { type Draft, useSpeechDraft } from "./useSpeechDraft";
 import { VoiceControls } from "./VoiceControls";
-import { VoiceSelect } from "./VoiceSelect";
+import { VoiceSelect, voiceLabel } from "./VoiceSelect";
 
 const group = (n: number) => n.toLocaleString("en-US").replace(/,/g, " ");
 const PREFS_WAIT_MS = 1500;
@@ -58,6 +62,7 @@ function SettingsTab({
   prefs,
   modelsError,
   onRetry,
+  presets,
 }: {
   idPrefix: string;
   draft: Draft;
@@ -65,9 +70,14 @@ function SettingsTab({
   prefs: ModelPreference[] | null | undefined;
   modelsError: string | null;
   onRetry: () => void;
+  presets: (id: string) => ReactNode;
 }) {
   return (
     <div className="space-y-6">
+      <div className="space-y-2">
+        <Label htmlFor={`${idPrefix}-preset`}>Voice preset</Label>
+        {presets(`${idPrefix}-preset`)}
+      </div>
       <div className="space-y-2">
         <Label htmlFor={`${idPrefix}-voice`}>Voice</Label>
         <VoiceSelect id={`${idPrefix}-voice`} model={draft.model} value={draft.voice} onChange={draft.setVoice} />
@@ -129,6 +139,26 @@ export function SpeechPage() {
     settled: speechPrefs.isSuccess || speechPrefs.isError || prefsWaited || openRouter?.configured === false,
   });
   const [result, setResult] = useState<{ recording: Recording; fresh: boolean } | null>(null);
+  const catalog = models.data?.models;
+
+  // The applied voice preset (voice-presets SAD §4 item 8): looked up in the list on every render, so a rename or an
+  // update elsewhere shows at once and a deleted one stops being applied (AC-07).
+  const presetsQ = useVoicePresets();
+  const presetList = presetsQ.data?.presets;
+  const [appliedId, setAppliedId] = useState<string | null>(null);
+  const applied = appliedId ? presetList?.find((p) => p.id === appliedId) : undefined;
+  useEffect(() => {
+    if (appliedId && presetsQ.isSuccess && !presetList?.some((p) => p.id === appliedId)) setAppliedId(null);
+  }, [appliedId, presetsQ.isSuccess, presetList]);
+  const setup = draft.model ? { model: draft.model.id, voice: draft.voice, settings: draft.settings } : undefined;
+  const modified = applied !== undefined && !(draft.model && setup && presetMatches(applied, setup, draft.model));
+  const [presetDialog, setPresetDialog] = useState<"save" | "rename" | "delete" | null>(null);
+  const [presetNote, setPresetNote] = useState<string | null>(null);
+  const applyPreset = (p: VoicePreset) => {
+    draft.apply(p);
+    setAppliedId(p.id);
+    setPresetNote(null);
+  };
   const rootRef = useRef<HTMLElement>(null);
   // A recording deleted anywhere (the gallery, the recent list) is no longer the latest result (audio-gallery AC-11).
   useEffect(() => onRecordingDeleted((id) => setResult((cur) => (cur?.recording.id === id ? null : cur))), []);
@@ -153,6 +183,7 @@ export function SpeechPage() {
       refreshBalances(queryClient);
     },
     onSuccess: (recording) => {
+      refreshPresetStats(queryClient); // its preset's count, total and last use (AC-04)
       // A result that arrives while the Owner is on another section never starts playing by itself (ADR-0050).
       setResult({ recording, fresh: !rootRef.current?.closest("[hidden]") });
       queryClient.invalidateQueries({ queryKey: RECORDINGS_KEY });
@@ -183,10 +214,42 @@ export function SpeechPage() {
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
   });
+  /** A reuse also applies the recording's preset, if it still exists, can be applied and still matches (AC-15). */
   const applyReuse = (r: Recording) => {
     draft.reuse(r);
     setResult({ recording: r, fresh: false });
+    const p = r.preset ? presetList?.find((x) => x.id === r.preset?.id) : undefined;
+    const m = catalog?.find((x) => x.id === r.model);
+    setAppliedId(p && m && presetAvailability(p, catalog) === "ok" && presetMatches(p, r, m) ? p.id : null);
   };
+
+  // A preset handed over from Voices: `?preset=<id>` on arrival, applied once the presets and the model list are
+  // known, never while a request is in flight (AC-14, the reuse precedent ADR-0053).
+  const presetMark = onSpeech ? new URLSearchParams(route.search).get("preset") : null;
+  const [presetWanted, setPresetWanted] = useState<string | null>(null);
+  useEffect(() => {
+    if (!presetMark) return;
+    setPresetNote(null);
+    if (inFlight.current) setPresetNote("Wait for the current recording to finish, then apply.");
+    else setPresetWanted(presetMark);
+    replace(window.location.pathname);
+  }, [presetMark]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the presets or the model list arrive
+  useEffect(() => {
+    if (presetWanted === null) return;
+    if (presetsQ.isError) {
+      setPresetNote("Couldn't load your voices.");
+      setPresetWanted(null);
+      return;
+    }
+    if (!presetList || !catalog) return;
+    const p = presetList.find((x) => x.id === presetWanted);
+    setPresetWanted(null);
+    if (inFlight.current) setPresetNote("Wait for the current recording to finish, then apply.");
+    else if (!p) setPresetNote("This voice no longer exists.");
+    else if (presetAvailability(p, catalog) !== "ok") setPresetNote(retiredText(p));
+    else applyPreset(p);
+  }, [presetWanted, presetList, catalog, presetsQ.isError]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the recording or the model list arrives
   useEffect(() => {
     if (reuseId === null) return;
@@ -217,7 +280,14 @@ export function SpeechPage() {
   const submit = () => {
     if (!canGenerate || !model || inFlight.current) return;
     inFlight.current = true;
-    generate.mutate({ text: draft.text, model: model.id, voice: draft.voice, settings: draft.settings });
+    generate.mutate({
+      text: draft.text,
+      model: model.id,
+      voice: draft.voice,
+      settings: draft.settings,
+      // Linked only while the preset is applied and unchanged; the server checks it again (ADR-0058).
+      presetId: applied && !modified ? applied.id : null,
+    });
   };
   const estimate = model ? estimateText(model.price, draft.chars) : null;
   const maxChars = model?.maxChars ?? 5000;
@@ -236,16 +306,31 @@ export function SpeechPage() {
           prefs={prefList}
           modelsError={models.isError ? errorText(models.error) : null}
           onRetry={() => models.refetch()}
+          presets={(id) => (
+            <PresetSelect
+              id={id}
+              presets={{
+                data: presetList,
+                isError: presetsQ.isError,
+                isPending: presetsQ.isPending,
+                refetch: () => presetsQ.refetch(),
+              }}
+              models={catalog}
+              prefs={prefList}
+              applied={applied}
+              modified={modified}
+              canSave={!!draft.model && (!applied || modified)}
+              onApply={applyPreset}
+              onSave={() => setPresetDialog("save")}
+              onRename={() => setPresetDialog("rename")}
+              onDelete={() => setPresetDialog("delete")}
+              onDetach={() => setAppliedId(null)}
+            />
+          )}
         />
       </TabsContent>
       <TabsContent value="recent">
-        <RecentRecordings
-          draftText={draft.text}
-          onReuse={(r) => {
-            draft.reuse(r);
-            setResult({ recording: r, fresh: false });
-          }}
-        />
+        <RecentRecordings draftText={draft.text} onReuse={applyReuse} />
       </TabsContent>
     </Tabs>
   );
@@ -283,6 +368,26 @@ export function SpeechPage() {
       {draft.notice && <p className="text-muted-foreground text-sm">{draft.notice}</p>}
       {reuseId !== null && <p className="text-muted-foreground text-sm">Loading the recording…</p>}
       {reuseNote && <p className="text-muted-foreground text-sm">{reuseNote}</p>}
+      {presetNote && <p className="text-muted-foreground text-sm">{presetNote}</p>}
+      {setup && draft.model && (
+        <SavePresetDialog
+          open={presetDialog === "save"}
+          onClose={() => setPresetDialog(null)}
+          setup={setup}
+          suggestion={`${voiceLabel(draft.voice)} · ${draft.model.name}`.slice(0, 60)}
+          applied={modified ? applied : undefined}
+          onSaved={(p) => setAppliedId(p.id)}
+        />
+      )}
+      <RenamePresetDialog
+        preset={presetDialog === "rename" ? applied : undefined}
+        onClose={() => setPresetDialog(null)}
+      />
+      <DeletePresetDialog
+        preset={presetDialog === "delete" ? applied : undefined}
+        onClose={() => setPresetDialog(null)}
+        onDeleted={() => setAppliedId(null)}
+      />
       <ReplaceTextDialog
         open={asking !== null}
         onKeep={() => setAsking(null)}

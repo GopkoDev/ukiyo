@@ -16,6 +16,7 @@ vi.mock("@/lib/api", async (orig) => ({
     currentJob: vi.fn(),
     generations: vi.fn(),
     speechModels: vi.fn(),
+    voicePresets: vi.fn(async () => ({ presets: [] })),
     providerBalance: vi.fn(),
     recordings: vi.fn(),
     recording: vi.fn(),

@@ -8,6 +8,6 @@
 | T4 | Link recordings to presets and list a preset's recordings | done | COMMIT |
 | T5 | Preset server timing NFRs | done | COMMIT |
 | T6 | Typed client, Voices section and routing (ADR-0059, ADR-0060) | done | COMMIT |
-| T7 | Speech page preset row: save, apply, modified, detach, rename, delete | todo | |
+| T7 | Speech page preset row: save, apply, modified, detach, rename, delete | done | COMMIT |
 | T8 | Voices list, preset page and the recording's preset row | todo | |
 | T9 | Architecture map and design-system inventory | todo | |
