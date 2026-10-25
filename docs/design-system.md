@@ -3,7 +3,7 @@ status: Living
 tool: code               # figma | pencil | code — the single committed source of the design-tool choice (never sdd.local.md: that file is per-developer + gitignored)
 figma_file: ""           # tool: figma → the Figma file URL/key the canon lives in; else ""
 pen_file: ""             # tool: pencil → the .pen library path (e.g. docs/design/library.pen); else ""
-updated_at: "2026-10-19"
+updated_at: "2026-10-25"
 ---
 
 # Design system — Ukiyo
@@ -49,13 +49,22 @@ updated_at: "2026-10-19"
 | ModelsPage | `src/web/features/models/ModelsPage.tsx` | loading / default / price «…» and price states / hidden row / save failed (per row) / list error + Try again / not configured / none configured / preferences unreadable (toggles disabled) / no longer offered + Forget (failed) | SCR-08, the `/models` section: a Card + Table per provider |
 | Textarea | `src/web/components/ui/textarea.tsx:17` | default / focus / disabled / invalid (`aria-invalid`) | prompt entry |
 | Sidebar (block `sidebar-08`, inset variant) | `src/web/components/ui/sidebar.tsx` | expanded / collapsed (icon rail, `Ctrl/⌘+B` or the trigger) / mobile sheet (below `md`) | the app frame's primitives: `SidebarProvider`, `Sidebar`, `SidebarInset`, `SidebarTrigger`, `SidebarMenu*` |
-| AppSidebar | `src/web/components/app-sidebar.tsx` | default / current entry (`isActive` + `aria-current`) / section indicator (generation running, failed) / collapsed (tooltips) | brand + one entry per `SECTIONS` item + footer (theme toggle, server status); no demo user/teams/projects |
+| AppSidebar | `src/web/components/app-sidebar.tsx` | default / current entry (`isActive` + `aria-current`) / section indicator (generation running, failed) / collapsed (tooltips) | brand + one labelled group per section group («Image», then «Audio», ADR-0046) inside one «Sections» nav + footer (theme toggle, server status); no demo user/teams/projects |
 | ModeToggle | `src/web/components/mode-toggle.tsx` | light / dark / system (DropdownMenu) | in the sidebar footer |
 | DropdownMenu | `src/web/components/ui/dropdown-menu.tsx` | closed / open | menus (theme toggle) |
 | Sheet | `src/web/components/ui/sheet.tsx` | open / closed | the sidebar on narrow windows |
 | Tooltip | `src/web/components/ui/tooltip.tsx` | hidden / shown | collapsed-sidebar labels; app wrapped in `TooltipProvider` |
 | Separator · Skeleton · Breadcrumb | `src/web/components/ui/{separator,skeleton,breadcrumb}.tsx` | default | inset header (trigger · separator · breadcrumb); skeletons used by the sidebar only |
 | NotFound | `src/web/components/NotFound.tsx:5` | default | unknown in-app address |
+| Tabs | `src/web/components/ui/tabs.tsx` | active / inactive | the Speech side panel «Settings» \| «Recent» |
+| Slider | `src/web/components/ui/slider.tsx` | default / dragging / disabled | `thumbProps` gives the thumb (`role="slider"`) its accessible name and value text |
+| Label | `src/web/components/ui/label.tsx` | default | names a field; a labelled trigger button is named by its label («Model», «Voice») |
+| ModelSelect | `src/web/features/audio/ModelSelect.tsx` | loading (disabled) / closed / open grouped by maker (ElevenLabs first) / selected | speech models as a popover list (like ModelPicker, not a Radix Select): price («$0.08 / 1K chars», «Free», «priced per …», «price unknown») + limit («5 000 chars · limit not published») |
+| VoiceSelect | `src/web/features/audio/VoiceSelect.tsx` | loading / list / filter (> 20 voices) / provider default + typed name (model lists none) | voice dot colour is stable per voice |
+| VoiceControls | `src/web/features/audio/VoiceControls.tsx` | slider / steps (labelled) / switch / text (≤ 1 000) / none («No adjustable settings for this model») / Reset values | renders the model's control descriptors from `src/shared/speech-models.ts` |
+| CostLabel | `src/web/features/audio/CostLabel.tsx` | known / pending («cost pending · ≈ $x») / unavailable (muted, «≈ $x») | never «$0» for an unknown cost; two significant digits, «< $0.0001» |
+| RecentRecordings | `src/web/features/audio/RecentRecordings.tsx` | loading / empty / error + Try again / list / pending refresh (10 s) / reuse / Replace your text? (`ReplaceTextDialog`) / delete (`DeleteRecording`: confirm · Deleting… · failed) | the step-19 audio gallery card grows from this row |
+| SpeechPage | `src/web/features/audio/SpeechPage.tsx` | SCR-02 / SCR-03 states in `docs/features/text-to-speech/screens.md` | the `/audio/speech` section; side panel as a Sheet below `lg` |
 
 ## Interaction & writing conventions
 

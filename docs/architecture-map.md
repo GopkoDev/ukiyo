@@ -2,7 +2,7 @@
 status: current
 mode: current   # current (brownfield scan) | greenfield-bootstrap (target foundation)
 updated_at: "2026-10-25"
-reflects_commit: "cbb9c47"
+reflects_commit: "3a6957a"
 # machine-readable keys — implement's command-detection cascade reads test_cmd/lint_cmd right after the settings override.
 language: "typescript 5 / node 26"
 build_cmd: "pnpm build"
@@ -72,15 +72,15 @@ C4Container
 | Module | Path | Layers | Wired at | Responsibility | Status |
 |---|---|---|---|---|---|
 | system | `src/server/modules/system/` | routes | `src/server/app.ts:49` | `GET /api/health` | built |
-| providers | `src/server/modules/providers/` | port (`port.ts`) + registry + adapters (`openrouter.ts`, `vercel.ts`) + `catalog.ts` + `prices.ts` + routes | `src/server/app.ts:52-58` | `ImageProvider` port (generate, optional `lookupCost`, optional `priceOf`); OpenRouter `/api/v1/images`; Vercel images + chat modalities + `GET /v1/generation?id=` cost lookup; cached model catalog; published prices | built (steps 2–4, 7) |
+| providers | `src/server/modules/providers/` | ports (`port.ts` image, `speech-port.ts` speech — ADR-0039) + registries + adapters (`openrouter.ts`, `vercel.ts`, `openrouter-speech.ts`) + `catalog.ts`, `speech-catalog.ts` + `prices.ts` + routes | `src/server/app.ts:52-58` | `ImageProvider` port (generate, optional `lookupCost`, optional `priceOf`); OpenRouter `/api/v1/images`; Vercel images + chat modalities + `GET /v1/generation?id=` cost lookup; cached model catalog; published prices | built (steps 2–4, 7) |
 | generations | `src/server/modules/generations/` | domain / service / repo / routes + `jobs.ts` (single-slot job) + `cost-sync.ts` + `promptKey.ts` | `src/server/app.ts:62-78` | start (async job, polled), list (cursor, by model, by prompt), prompt groups, get, re-run/reuse lineage, comment, tag, delete; background cost resolver (`pending → known/unavailable`) | built (steps 2–6, 11–14) |
 | models | `src/server/modules/models/` | repo / routes | `src/server/app.ts:60` | per-model preferences (favorite, hidden) per provider + model id | built (steps 9–10) |
-| storage | `src/server/modules/storage/` | infra (`file-store.ts`) | injected into generations service | staged image files `.staging/<id>/` → `generations/<id>/` by one synchronous rename inside the DB transaction; trash/restore/purge on delete; boot sweep | built |
-| audio | `src/server/modules/audio/` | routes + repo + own OpenRouter client (`openrouter-speech.ts`) | `src/server/app.ts:80-85` | **prototype**: ElevenLabs TTS via OpenRouter `POST /audio/speech`, catalog `GET /models?output_modalities=speech`, `GET /credits`; rows in `audio_generations`, files in `audio/<id>.mp3` | prototype (to be rebuilt — roadmap step 18) |
+| storage | `src/server/modules/storage/` | infra (`file-store.ts`) | injected into the generations and audio services | staged image dirs `.staging/<id>/` → `generations/<id>/` and audio files `.staging/audio-<id>.<ext>` → `audio/<id>.<ext>` by one synchronous rename inside the DB transaction; trash/restore/purge on delete; one boot sweep for both (ADR-0042) | built |
+| audio | `src/server/modules/audio/` | routes / service / domain / repo + `wav.ts` | `src/server/app.ts` (`createApp`) | text-to-speech recordings: validate against the speech model, speak through the speech port, wrap raw PCM as WAV, save file + row atomically (file store), cost `pending → known/unavailable` via a second cost-sync instance, list (cursor), delete atomically, serve files | built (step 18) |
 | db | `src/server/db/` | infra (`client.ts`, `migrate.ts`) | `src/server/index.ts:10` | open SQLite (WAL); apply pending migrations on every boot | built |
 | lib | `src/server/lib/` | shared (`errors.ts`, `ids.ts`, `config.ts`, `request-guard.ts`) | imported | `AppError` + envelope, ULIDs, env via zod, Host/Origin/fetch-metadata guard (ADR-0007) | built |
-| shared | `src/shared/` | contracts | server + web | zod DTOs: `generations`, `providers`, `models`, `pricing`, `curation`, `rerun`, `model-groups`, `errors`, `health`, `image-sniff`, `audio` (prototype) | built |
-| web | `src/web/` | `features/{generate,gallery,models,audio}`, `components/ui`, `lib/{api,router,format,query-client}`, `sections.tsx` | `src/web/main.tsx` | SPA | built (audio = prototype) |
+| shared | `src/shared/` | contracts | server + web | zod DTOs: `generations`, `providers`, `models`, `pricing`, `curation`, `rerun`, `model-groups`, `errors`, `health`, `image-sniff`, `speech` (recordings) + `speech-models` (family spec map, ADR-0040) | built |
+| web | `src/web/` | `features/{generate,gallery,models,audio}`, `components/ui`, `lib/{api,router,format,query-client}`, `sections.tsx` | `src/web/main.tsx` | SPA; navigation in section groups Image / Audio (ADR-0046) | built |
 
 ## Conventions (cited — the rules a new feature must match)
 
@@ -100,7 +100,7 @@ C4Container
   Money: integer `cost_micros` + `cost_status` (`known | pending | unavailable`) with a CHECK tying
   them (`migrations/0002_create_generations.up.sql:16`); deferred price via `cost_ref`
   (`migrations/0005_add_generation_cost_ref.up.sql`). Timestamps ISO-8601 UTC text.
-- **Deferred cost:** `createCostSync` (`src/server/modules/generations/cost-sync.ts:39`) — bounded
+- **Deferred cost:** `createCostSync({ repo, lookupFor })` (`src/server/modules/generations/cost-sync.ts`) — one instance per record kind (images, recordings — ADR-0043); bounded
   backoff lookups (5 s doubling to 60 s, 8 attempts, 10-min deadline) through the adapter's optional
   `lookupCost(costRef)` (`providers/port.ts:45,53`); resumes pending rows on boot; `forget(id)` on
   delete (ADR-0013). Implementation: Vercel `lookupCost` (`providers/vercel.ts:149`).
@@ -146,9 +146,10 @@ C4Container
   `ApiError` carries the envelope code).
 - **Routing / app frame:** History API router `src/web/lib/router.tsx` (detail route
   `/generations/:id`, everything else a page); one section registry `src/web/sections.tsx` drives the
-  sidebar (`app-sidebar.tsx`, one flat «Sections» group today), page, breadcrumb, title and
-  not-found (ADR-0022); Generate stays mounted (ADR-0023). Current sections: Generate `/`,
-  Gallery `/gallery`, Speech `/speech` (prototype), Models `/models`.
+  sidebar (`app-sidebar.tsx`: one «Sections» nav with a labelled group per section group — Image, Audio;
+  ADR-0046), page, breadcrumb, title and not-found (ADR-0022); Generate stays mounted, Speech mounts on
+  its first visit and then stays (ADR-0023, ADR-0045). Current sections: Image — Generate `/`, Gallery
+  `/gallery`, Models `/models`; Audio — Speech `/audio/speech` (former `/speech` redirects).
 - **Theme:** light/dark/system (ADR-0024).
 - **Closest UI precedents:** gallery grid + detail modal (`features/gallery/Gallery.tsx`,
   `GenerationDialog.tsx`, `Tile.tsx`, `CardBadges.tsx`, `Notes.tsx`, `DeleteGeneration.tsx`); Models
@@ -170,16 +171,9 @@ C4Container
 - **Local-only, single user:** `127.0.0.1` only; no auth; request guard (ADR-0007).
 - **Provider drift:** model ids, prices and parameters change fast; catalogs are fetched live and cached.
 - **Vercel cost is asynchronous** → `pending` is a first-class cost state.
-- **Audio prototype (commits `a1169a1`, `cbb9c47`)** — works end to end (the owner's DB holds 19 real
-  rows + files, migration 0011 is applied there, so 0011 is treated as shipped), but violates the
-  conventions: (1) its OpenRouter client lives inside `modules/audio/`, not as a providers adapter
-  behind a port; (2) `audio_generations` has `cost_micros` without `cost_status`, and `cost_ref` is
-  stored but never reconciled; (3) files are written with `node:fs` directly, bypassing
-  `storage/file-store.ts` (no staged atomic commit, delete is row-then-file); (4) no service/domain
-  layer — validation, billing and storage live in `routes.ts`; (5) model-catalog cache and the 180 s
-  timeout are hard-coded in the module; (6) list is `LIMIT 100`, no cursor; (7) ElevenLabs only
-  (`SPEECH_MODEL_PREFIX`), mp3 only; (8) no unit test for the client, no web tests; SpeechPage is one
-  461-line file. Rebuilt by roadmap step 18 `text-to-speech`.
+- **Audio (step 18):** the prototype (`a1169a1`, `cbb9c47`) was rebuilt on the conventions above; its 19
+  recordings were kept by migration 0012 (amounts → `known`). Speech model knowledge lives in a hand-kept
+  family spec map (`src/shared/speech-models.ts`) because OpenRouter publishes no speech parameters.
 - **Native module:** better-sqlite3 prebuilt for Node 26.
 - **No CI.**
 

@@ -251,7 +251,7 @@
       "dod": "design-system.md lists Tabs, Slider, Label and the new audio components with their states; architecture-map.md describes the rebuilt audio module, the speech port and the grouped sections",
       "files_hint": ["docs/design-system.md", "docs/architecture-map.md"],
       "file": "docs/features/text-to-speech/tasks/register-audio-components.md",
-      "status": "todo"
+      "status": "done"
     }
   ]
 }
