@@ -60,7 +60,12 @@ export function createApp(deps: AppDeps, options: CreateAppOptions = {}) {
     prices: createPriceCatalog(providers, catalog, deps.now, deps.priceTimeoutMs),
   });
 
-  registerModelsRoutes(api, { repo: createModelsRepo(deps.db, deps.now), providers, catalog });
+  // Speech (text-to-speech) behind its own port (ADR-0039); its catalog also checks speech-model preferences (ADR-0054).
+  const speech = speechRegistryOf([
+    createOpenRouterSpeech({ apiKey: deps.config.openRouterApiKey, fetch: deps.fetch ?? fetch }),
+  ]);
+  const speechCatalog = createSpeechCatalog(speech, deps.now);
+  registerModelsRoutes(api, { repo: createModelsRepo(deps.db, deps.now), providers, catalog, speech, speechCatalog });
 
   const files = createFileStore(deps.config.dataDir);
   const repo = createGenerationsRepo(deps.db);
@@ -83,10 +88,7 @@ export function createApp(deps: AppDeps, options: CreateAppOptions = {}) {
   repo.backfillPromptKeys(); // pre-0010 generations get their prompt key (ADR-0037)
   registerGenerationsRoutes(api, { service, files });
 
-  // Audio (text-to-speech): speech behind its own port (ADR-0039), its own cost resolver over recordings (ADR-0043).
-  const speech = speechRegistryOf([
-    createOpenRouterSpeech({ apiKey: deps.config.openRouterApiKey, fetch: deps.fetch ?? fetch }),
-  ]);
+  // Audio: its own cost resolver over recordings (ADR-0043).
   const recordings = createRecordingsRepo(deps.db);
   const audioCostSync = createCostSync({
     repo: recordings,
@@ -96,7 +98,7 @@ export function createApp(deps: AppDeps, options: CreateAppOptions = {}) {
   });
   const audio = createAudioService({
     speech,
-    catalog: createSpeechCatalog(speech, deps.now),
+    catalog: speechCatalog,
     repo: recordings,
     files,
     costSync: audioCostSync,

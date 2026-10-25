@@ -1,3 +1,4 @@
+import type { ProviderId } from "../../../shared/providers";
 import type { CreditsResponse, SpeechModel, VoiceSettings } from "../../../shared/speech";
 import type { CostLookup } from "./port";
 
@@ -12,7 +13,7 @@ export type SpeechResult = { bytes: Uint8Array; mediaType: string; costUsd: numb
 
 /** A speech provider behind its own port, next to `ImageProvider` (ADR-0039). Throws `ProviderError`. */
 export interface SpeechProvider {
-  readonly id: string;
+  readonly id: ProviderId;
   readonly name: string;
   readonly configured: boolean;
   listModels(signal?: AbortSignal): Promise<SpeechModel[]>;
@@ -25,6 +26,6 @@ export interface SpeechProvider {
 export type SpeechRegistry = { list(): SpeechProvider[]; get(id: string): SpeechProvider | undefined };
 
 export function speechRegistryOf(providers: SpeechProvider[]): SpeechRegistry {
-  const byId = new Map(providers.map((p) => [p.id, p]));
+  const byId = new Map<string, SpeechProvider>(providers.map((p) => [p.id, p]));
   return { list: () => [...byId.values()], get: (id) => byId.get(id) };
 }
