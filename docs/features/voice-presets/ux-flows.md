@@ -29,10 +29,10 @@ flowchart TD
   B -->|none| C[Save → SCR-02 name field, suggestion «voice · model»]
   B -->|applied, unchanged| X[Save unavailable]
   B -->|applied, modified| D[Save → SCR-02 Update «name» / Save as new]
-  C -->|confirm valid name| E[preset kept; applied, plain «name»]
+  C -->|confirm valid name| E[preset kept, applied, plain «name»]
   C -->|empty / >60 / name taken| C1[dialog stays + message]
   C -->|save failed| C2[«Couldn't save — try again.», text kept]
-  D -->|Update| F[preset replaced; applied, unchanged; past recordings untouched]
+  D -->|Update| F[preset replaced, applied, unchanged, past recordings untouched]
   D -->|Save as new| C
   F -->|failed| F1[«Couldn't save — try again.», nothing changes]
 ```
@@ -42,17 +42,17 @@ flowchart TD
 ```mermaid
 flowchart TD
   A[SCR-01 preset list, by name] --> B{pick a preset}
-  B -->|offered model + voice| C[model, voice, settings set; text kept; «name»]
+  B -->|offered model + voice| C[model, voice, settings set, text kept, «name»]
   B -->|hidden model| C
   B -->|no longer offered| B1[nothing applied + «model is no longer offered»]
   B -->|model list not loaded| B2[listed, can't apply yet]
-  A -->|preset list unreadable| B3[«Couldn't load your voices.»; generating still works]
+  A -->|preset list unreadable| B3[«Couldn't load your voices.», generating still works]
   C -->|catalog changed a setting| M[«name · modified»]
   C -->|Owner edits model / voice / a setting| M
   M -->|values back to the preset's| C
   M -->|Generate| U[recording saved unlinked]
   C -->|Generate| L[recording saved linked]
-  C -->|Detach| D[no preset; values kept]
+  C -->|Detach| D[no preset, values kept]
   M -->|Detach| D
 ```
 
@@ -65,7 +65,7 @@ flowchart TD
   R -->|invalid / taken| R2[dialog stays + message]
   R -->|failed| R3[«Couldn't save — try again.»]
   A -->|Delete| D[SCR-07 confirmation with N recordings]
-  D -->|confirm| D1[gone from list + Voices; recordings kept, unlinked]
+  D -->|confirm| D1[gone from list + Voices, recordings kept, unlinked]
   D1 -->|was applied on Speech| D2[Speech: no preset, values kept]
   D1 -->|was on its page| D3[SCR-05 «This voice no longer exists.» + back to Voices]
   D -->|failed| D4[«Couldn't delete — try again.», nothing changes]
@@ -97,10 +97,10 @@ flowchart TD
   B -->|no recordings| B0[«No recordings with this voice yet.» + Apply]
   B -->|read failed| B1[«Couldn't load this voice.» + Try again]
   B -->|deleted| B2[«This voice no longer exists.»]
-  B -->|scroll| B3[next page; failure → «Couldn't load more.» + Try again]
+  B -->|scroll| B3[next page, failure → «Couldn't load more.» + Try again]
   B -->|open a card| C[SCR-06 dialog, ← → within the preset]
   C -->|Back / close| B
-  C -->|delete recording| C1[steps to neighbour; counts update]
+  C -->|delete recording| C1[steps to neighbour, counts update]
   A -->|Apply| S[SCR-01 with the preset applied]
   B -->|Apply| S
   S -->|request in flight| S1[«Wait for the current recording to finish, then apply.»]
