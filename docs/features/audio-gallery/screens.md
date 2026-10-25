@@ -103,7 +103,7 @@ Gemini 3.8 Flash TTS                    Show all 3
 | next failed | next page failed (AC-05) | strip «Couldn't load the next one. Try again» | — |
 | deleted notice | after a delete moved to a neighbour (AC-11) | status strip «Recording deleted.» | — |
 | not in order | opened outside the loaded order | «Not in the gallery's current order» instead of steps | — |
-| delete failed | delete error (AC-12) | alert «Couldn't delete this recording» | — |
+| delete failed | delete error (AC-12) | the confirmation (SCR-07) says «Couldn't delete this recording — try again» | — |
 
 ```text
 +------------------------------------------------------------------------+
@@ -131,8 +131,8 @@ Gemini 3.8 Flash TTS                    Show all 3
 | default | direct visit, recording read (AC-06) | link Button «← Gallery» (to «All»); `NEW: RecordingDetail` layout `page`: same content as SCR-04 in one column, no steps | — |
 | loading | read in flight | «Loading…» | — |
 | gone | 404 (AC-06) | «This recording no longer exists.» + «← Gallery» | — |
-| error | read failed | destructive panel «Couldn't load this recording» + «Retry» | — |
-| delete failed | (AC-12) | alert «Couldn't delete this recording» | — |
+| error | read failed | destructive panel «Couldn't load this recording» + «Try again» (spec AC-06) | — |
+| delete failed | (AC-12) | the confirmation (SCR-07) says «Couldn't delete this recording — try again» | — |
 
 ### SCR-06 — Notes card (in SCR-04 / SCR-05)
 
@@ -151,7 +151,7 @@ Gemini 3.8 Flash TTS                    Show all 3
 |---|---|---|---|
 | default | Delete chosen (AC-11) | Dialog: «Delete this recording?», quoted excerpt, «Its audio file, tags and comment are deleted too. This can't be undone.», Cancel (autofocus) / destructive Delete | — |
 | deleting | in flight | «Deleting…» + Loader2, both buttons disabled, no close | — |
-| failed | (AC-12) | closes; SCR-04/SCR-05 alert | — |
+| failed | (AC-12) | stays open with «Couldn't delete this recording — try again» (step-18 behaviour, review 2026-10-25); the recording stays complete | — |
 | empty | N/A: a confirmation has no data state | — | — |
 
 Reuses step 18's `DeleteRecording` dialog content; it now reports busy to the dialog and hands the result to the dialog's delete-then-move (ADR-0049).
