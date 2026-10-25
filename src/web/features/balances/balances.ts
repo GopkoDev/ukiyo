@@ -30,8 +30,11 @@ export function useProviderBalance(provider: ProviderId, enabled = true) {
 }
 
 /** «$12.34», «…» before the first answer, «—» when the last read failed or the provider gave no figure. */
-export function balanceText(q: Pick<UseQueryResult<BalanceResponse>, "isPending" | "isError" | "data">): string {
-  if (q.isError) return "—";
+export function balanceText(
+  q: Pick<UseQueryResult<BalanceResponse>, "isPending" | "isError" | "data" | "errorUpdatedAt" | "dataUpdatedAt">,
+): string {
+  // The last read failed — also while a new read runs after a first failure (the query is «pending» again, review R2).
+  if (q.isError || q.errorUpdatedAt > q.dataUpdatedAt) return "—";
   if (q.isPending || !q.data) return "…";
   return q.data.remainingUsd === null ? "—" : `$${q.data.remainingUsd.toFixed(2)}`;
 }

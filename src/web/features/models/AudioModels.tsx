@@ -27,8 +27,8 @@ export const controlsText = (m: Pick<SpeechModel, "controls">) =>
   m.controls.length === 0 ? NONE : m.controls.map((c) => c.label.toLowerCase()).join(", ");
 
 /** The speech catalog — the Speech page's cache entry (same key and freshness, so no extra read). */
-export const useSpeechModels = () =>
-  useQuery({ queryKey: SPEECH_MODELS_KEY, queryFn: api.speechModels, staleTime: 10 * 60_000, retry: false });
+export const useSpeechModels = (enabled = true) =>
+  useQuery({ queryKey: SPEECH_MODELS_KEY, queryFn: api.speechModels, staleTime: 10 * 60_000, retry: false, enabled });
 
 const mark = (set: ReadonlySet<string>, key: string, on: boolean) => {
   const next = new Set(set);
@@ -42,9 +42,11 @@ export function AudioModels() {
   const providers = useProviders();
   const openRouter = providers.data?.providers.find((p) => p.id === "openrouter");
   const configured = openRouter?.configured === true;
-  const models = useSpeechModels();
+  const models = useSpeechModels(configured || providers.isError); // no read until OpenRouter is known configured
   const prefsQuery = useModelPreferences("openrouter", configured, "speech");
-  const prefs = prefsQuery.isError ? null : (prefsQuery.data?.preferences ?? null);
+  // A failed providers read leaves the preferences unknown: same as unreadable ones (review R9).
+  const prefsUnreadable = prefsQuery.isError || providers.isError;
+  const prefs = prefsUnreadable ? null : (prefsQuery.data?.preferences ?? null);
   const flags = new Map((prefs ?? []).map((p) => [p.model, p]));
 
   const [saveFailed, setSaveFailed] = useState<ReadonlySet<string>>(new Set());
@@ -97,7 +99,7 @@ export function AudioModels() {
       : [];
     body = (
       <>
-        {prefsQuery.isError && (
+        {prefsUnreadable && (
           <p className="mb-2 text-muted-foreground text-sm">Favorites and hidden models couldn't be loaded.</p>
         )}
         <Table>

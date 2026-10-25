@@ -40,9 +40,19 @@ describe("speech model preferences", () => {
     expect(await list("speech")).toMatchObject([{ model: SPEECH, favorite: true, hidden: true }]);
     expect(await list()).toEqual([]);
     expect(await list("image")).toEqual([]);
-    // an image preference never shows as a speech one
+    // an image preference never shows as a speech one — even for the very same id
     expect((await patch({ provider: "openrouter", model: IMAGE, favorite: true })).status).toBe(200);
     expect((await list("speech")).map((p) => p.model)).toEqual([SPEECH]);
+    t.db
+      .prepare(
+        "INSERT INTO model_preferences (provider, model, favorite, hidden, updated_at) VALUES ('openrouter', ?, 0, 1, 'x')",
+      )
+      .run(SPEECH);
+    expect((await list("speech")).find((p) => p.model === SPEECH)).toMatchObject({ favorite: true, hidden: true });
+    expect((await list()).find((p) => p.model === SPEECH)).toMatchObject({ favorite: false, hidden: true });
+    await patch({ provider: "openrouter", model: SPEECH, hidden: false }); // the image row goes, the speech row stays
+    expect((await list("speech")).find((p) => p.model === SPEECH)).toMatchObject({ favorite: true, hidden: true });
+    expect((await list()).map((p) => p.model)).toEqual([IMAGE]);
     // toggling twice ends where it started
     await patch({ provider: "openrouter", kind: "speech", model: SPEECH, favorite: false });
     const off = ModelPreference.parse(
@@ -87,8 +97,9 @@ describe("speech model preferences", () => {
     expect((await patch({ provider: "openrouter", kind: "speech", model: SPEECH, favorite: true })).status).toBe(502);
   });
 
-  it("rejects an unknown kind", async () => {
+  it("rejects an unknown kind, and speech preferences of a provider without speech", async () => {
     setup();
+    expect((await t.app.request("/api/model-preferences?provider=vercel&kind=speech")).status).toBe(400);
     expect((await t.app.request("/api/model-preferences?provider=openrouter&kind=video")).status).toBe(400);
     expect((await patch({ provider: "openrouter", kind: "video", model: SPEECH, favorite: true })).status).toBe(400);
   });

@@ -1,3 +1,4 @@
+import { focusManager } from "@tanstack/react-query";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -121,5 +122,37 @@ describe("refresh (AC-13, spec §6)", () => {
     await waitFor(() => expect(m.providerBalance).toHaveBeenCalledTimes(1));
     await act(async () => vi.advanceTimersByTimeAsync(BALANCE_REFRESH_MS + 100));
     await waitFor(() => expect(m.providerBalance).toHaveBeenCalledTimes(2));
+  });
+
+  it("pauses the interval while the tab is hidden and reads once on returning to it", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    m.providers.mockResolvedValue({ providers: [BOTH.providers[0] as never] });
+    m.providerBalance.mockResolvedValue({ provider: "openrouter", remainingUsd: 1 });
+    render();
+    await waitFor(() => expect(m.providerBalance).toHaveBeenCalledTimes(1));
+    try {
+      act(() => focusManager.setFocused(false));
+      await act(async () => vi.advanceTimersByTimeAsync(BALANCE_REFRESH_MS * 2 + 100));
+      expect(m.providerBalance).toHaveBeenCalledTimes(1);
+      act(() => focusManager.setFocused(true));
+      await waitFor(() => expect(m.providerBalance).toHaveBeenCalledTimes(2));
+    } finally {
+      focusManager.setFocused(undefined);
+    }
+  });
+
+  it("keeps «—» while re-reading after a first failed read (review R2)", async () => {
+    m.providers.mockResolvedValue({ providers: [BOTH.providers[0] as never] });
+    let finish: (v: unknown) => void = () => {};
+    m.providerBalance
+      .mockRejectedValueOnce(new ApiError(500, "HTTP_ERROR", "down"))
+      .mockImplementationOnce(() => new Promise((r) => (finish = r as never)));
+    const { client } = render();
+    await waitFor(() => expect(text()).toEqual(["OpenRouter—"]));
+    act(() => refreshBalances(client));
+    await waitFor(() => expect(m.providerBalance).toHaveBeenCalledTimes(2));
+    expect(text()).toEqual(["OpenRouter—"]);
+    await act(async () => finish({ provider: "openrouter", remainingUsd: 4 }));
+    await waitFor(() => expect(text()).toEqual(["OpenRouter$4.00"]));
   });
 });

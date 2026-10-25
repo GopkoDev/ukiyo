@@ -40,7 +40,9 @@ export function registerModelsRoutes(app: Hono, deps: ModelsRouteDeps) {
       throw new AppError("VALIDATION_ERROR", "Invalid preferences query", 400, { fields: fieldsOf(q.error.issues) });
     const { provider, kind } = q.data;
     if (kind === "speech" && !deps.speech.get(provider))
-      return c.json({ preferences: [] } satisfies PreferencesResponse);
+      throw new AppError("VALIDATION_ERROR", "Speech models come from OpenRouter only", 400, {
+        fields: { provider: "Speech models come from OpenRouter only" },
+      });
     return c.json({ preferences: deps.repo.kind(kind).list(provider) } satisfies PreferencesResponse);
   });
 

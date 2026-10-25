@@ -98,7 +98,8 @@ function fromDataUrl(url: string): Uint8Array {
   return m?.[1] ? new Uint8Array(Buffer.from(m[1], "base64")) : new Uint8Array();
 }
 
-const Credits = z.looseObject({ balance: z.union([z.string(), z.number()]) });
+/** A USD figure as a number or a plain numeric string ("95.50"); an empty string is not zero (review R1). */
+const Credits = z.looseObject({ balance: z.union([z.number(), z.string().regex(/^-?\d+(\.\d+)?$/)]) });
 
 export function createVercelProvider(opts: { apiKey: string | undefined; fetch: typeof fetch }): ImageProvider {
   const fail = (status: number | null, message: string) => new ProviderError("vercel", status, message);

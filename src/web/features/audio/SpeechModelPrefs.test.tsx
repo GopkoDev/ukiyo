@@ -108,12 +108,15 @@ describe("Speech model list with preferences", () => {
     expect(screen.getByRole("button", { name: "Generate speech" })).toBeEnabled();
   });
 
-  it("a slow preference read doesn't hold the pick past 1.5 s", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    m.speechModelPreferences.mockReturnValue(new Promise(() => {}));
+  it("a slow preference read doesn't hold the pick past 1.5 s, and a late answer doesn't move it", async () => {
+    let answer: (v: unknown) => void = () => {};
+    m.speechModelPreferences.mockReturnValue(new Promise((r) => (answer = r as never)));
     renderWithQuery(<SpeechPage />);
     await waitFor(() => expect(modelButton()).toHaveTextContent("Eleven v3"));
-    await act(async () => vi.advanceTimersByTimeAsync(1600));
-    expect(modelButton()).toHaveTextContent("Eleven v3");
+    await act(async () => new Promise((r) => setTimeout(r, 1600))); // pinned to the first model
+    await act(async () => answer({ preferences: [pref(TTS.id, true, false)] }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Model" })).toBeEnabled());
+    expect(groups()[0]).toEqual(["Favorites", ["TTS 1"]]);
+    expect(modelButton()).toHaveTextContent("Eleven v3"); // not moved to the late favorite
   });
 });

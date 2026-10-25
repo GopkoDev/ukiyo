@@ -1,9 +1,11 @@
-import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, api } from "@/lib/api";
 import { renderWithQuery } from "@/test-utils";
 import type { SpeechModel } from "../../../shared/speech";
 import { controlsFor } from "../../../shared/speech-models";
+import { SPEECH_MODELS_KEY } from "../audio/queryKeys";
 import { AudioModels, controlsText, voicesText } from "./AudioModels";
 
 /** SCR-02 — the Audio view (models-page-audio AC-01, AC-02, AC-05…AC-08). */
@@ -141,6 +143,37 @@ describe("Audio view (SCR-02)", () => {
     expect(await screen.findByText("Favorites and hidden models couldn't be loaded.")).toBeVisible();
     expect(screen.getByRole("button", { name: "Favorite Eleven v3" })).toBeDisabled();
     expect(screen.queryByText("No longer offered")).toBeNull();
+  });
+});
+
+describe("catalog reads (spec §6 Audio view)", () => {
+  it("reads nothing more with a warm catalog, and once with a cold one", async () => {
+    const warm = renderWithQuery(<AudioModels />);
+    await screen.findByText("Eleven v3");
+    expect(m.speechModels).toHaveBeenCalledTimes(1);
+    warm.unmount();
+    m.speechModels.mockClear();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(SPEECH_MODELS_KEY, { models: [V3], fetchedAt: "2026-10-25T10:00:00.000Z" });
+    render(
+      <QueryClientProvider client={client}>
+        <AudioModels />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText("OpenRouter · 1 speech model")).toBeVisible();
+    expect(m.speechModels).not.toHaveBeenCalled();
+  });
+
+  it("doesn't read the catalog for an unconfigured OpenRouter; a failed providers read disables the toggles with a notice", async () => {
+    m.providers.mockResolvedValue({ providers: [{ id: "openrouter", name: "OpenRouter", configured: false }] });
+    const first = renderWithQuery(<AudioModels />);
+    await screen.findByText("OpenRouter isn't configured — add its key to .env.local.");
+    expect(m.speechModels).not.toHaveBeenCalled();
+    first.unmount();
+    m.providers.mockRejectedValue(new ApiError(500, "HTTP_ERROR", "down"));
+    renderWithQuery(<AudioModels />);
+    expect(await screen.findByText("Favorites and hidden models couldn't be loaded.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Favorite Eleven v3" })).toBeDisabled();
   });
 });
 

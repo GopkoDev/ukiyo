@@ -39,8 +39,11 @@ describe("provider balance read", () => {
     expect(await (await read("openrouter")).json()).toEqual({ provider: "openrouter", remainingUsd: null });
     expect(await (await read("vercel")).json()).toEqual({ provider: "vercel", remainingUsd: null });
     t.cleanup();
-    t = createTestApp({ aiGatewayApiKey: "k" }, { fetch: fakeFetch(() => ({ body: { balance: "lots" } })) });
-    expect(await (await read("vercel")).json()).toEqual({ provider: "vercel", remainingUsd: null });
+    for (const balance of ["lots", "", " "]) {
+      t.cleanup();
+      t = createTestApp({ aiGatewayApiKey: "k" }, { fetch: fakeFetch(() => ({ body: { balance } })) });
+      expect(await (await read("vercel")).json()).toEqual({ provider: "vercel", remainingUsd: null }); // never $0
+    }
   });
 
   it("unknown provider → not found; no key → not configured, without calling out", async () => {
