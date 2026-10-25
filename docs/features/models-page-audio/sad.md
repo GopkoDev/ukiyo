@@ -211,6 +211,7 @@ Unchanged: one Node process on `127.0.0.1`; the migration applies on boot (and b
 - **OpenRouter credits for a limited key:** `/credits` reports the account's credits; a key with its own spend limit isn't reflected. Accepted — matches step 18's line.
 - **Vercel answers strings** (`"95.50"`): parsed with `Number()`; a non-finite value → null («—»).
 - **Two sections for one page** is a small registry special case; documented in ADR-0056.
+- **Duplicated toggle markup (review 2026-10-25 R4):** §4 item 7 planned shared `PreferenceToggles` / `RetiredPreferences`; the Audio view repeats the image table's ★ / switch cells and the «No longer offered» block instead, so the step-10 Image view stays byte-for-byte unchanged (AC-10). Debt: a fix to the per-model save/forget handling must be made in both `ModelsPage.tsx` and `AudioModels.tsx` — extract the shared pieces when either is next touched.
 
 ## 12. Glossary
 
