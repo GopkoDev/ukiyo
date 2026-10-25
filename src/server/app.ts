@@ -4,6 +4,8 @@ import type { Db } from "./db/client";
 import { type Config, DEV_UI_PORT } from "./lib/config";
 import { notFound, onError } from "./lib/errors";
 import { requestGuard } from "./lib/request-guard";
+import { createPresetsRepo } from "./modules/audio/presets-repo";
+import { createPresetService } from "./modules/audio/presets-service";
 import { createRecordingsRepo } from "./modules/audio/repo";
 import { registerAudioRoutes } from "./modules/audio/routes";
 import { createAudioService } from "./modules/audio/service";
@@ -108,7 +110,13 @@ export function createApp(deps: AppDeps, options: CreateAppOptions = {}) {
     timeoutMs: deps.generationTimeoutMs ?? GENERATION_TIMEOUT_MS,
     now: deps.now,
   });
-  registerAudioRoutes(api, { service: audio });
+  const presets = createPresetService({
+    repo: createPresetsRepo(deps.db),
+    speech,
+    catalog: speechCatalog,
+    now: deps.now,
+  });
+  registerAudioRoutes(api, { service: audio, presets });
   audio.warmCatalog(); // display names for prototype recordings, in the background (ADR-0052)
 
   // One sweep once both repos exist: interrupted image and audio deletions are restored, leftovers dropped (ADR-0042).

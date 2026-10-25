@@ -9,8 +9,8 @@ files_hint: ["src/server/modules/audio/presets-repo.ts", "src/server/modules/aud
 owner: "dmytro.hopko"
 estimate: "M"
 context_budget: "L"   # justified: one screen family; the ACs share one state machine
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T3 — Presets repo, service and routes with stats

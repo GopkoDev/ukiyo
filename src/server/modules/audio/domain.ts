@@ -1,4 +1,5 @@
-import type { CostStatus, Recording } from "../../../shared/speech";
+import type { CostStatus, Recording, SpeechModel } from "../../../shared/speech";
+import { AppError } from "../../lib/errors";
 import type { RecordingCuration, RecordingRecord } from "./repo";
 
 const toMicros = (usd: number) => Math.round(usd * 1_000_000);
@@ -51,3 +52,13 @@ export function toRecordingDto(
 
 /** «5000» → «5 000», the way the Speech page writes limits. */
 export const groupDigits = (n: number) => n.toLocaleString("en-US").replace(/,/g, " ");
+
+/** A voice the model takes: required-voice models need one of their own voices; others take any or none. */
+export function checkVoice(model: SpeechModel, voice: string | null): void {
+  if (voice === null && model.voiceMode === "required")
+    throw new AppError("VALIDATION_ERROR", "Choose a voice", 400, { fields: { voice: "Choose a voice" } });
+  if (voice !== null && model.voiceMode === "required" && !model.voices.includes(voice))
+    throw new AppError("VALIDATION_ERROR", `${model.name} doesn't offer the voice «${voice}»`, 400, {
+      fields: { voice: "Choose one of this model's voices" },
+    });
+}

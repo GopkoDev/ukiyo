@@ -2,9 +2,10 @@ import { readFile } from "node:fs/promises";
 import type { Hono } from "hono";
 import { z } from "zod";
 import { AppError } from "../../lib/errors";
+import type { PresetService } from "./presets-service";
 import type { AudioService } from "./service";
 
-export type AudioRouteDeps = { service: AudioService };
+export type AudioRouteDeps = { service: AudioService; presets: PresetService };
 
 const Id = z.string().regex(/^[0-9A-Z]{26}$/);
 const PageQuery = z.object({
@@ -29,7 +30,28 @@ const fieldsOf = (issues: z.core.$ZodIssue[]) =>
 
 /** The audio contract (contracts/openapi.yaml, text-to-speech) — a thin HTTP layer over the audio service. */
 export function registerAudioRoutes(app: Hono, deps: AudioRouteDeps) {
-  const { service } = deps;
+  const { service, presets } = deps;
+  const presetNotFound = () => new AppError("NOT_FOUND", "Voice preset not found", 404);
+
+  // Voice presets (contracts/openapi.yaml, voice-presets).
+  app.get("/audio/presets", (c) => c.json(presets.list()));
+  app.post("/audio/presets", async (c) => c.json(await presets.create(await jsonBody(c.req)), 201));
+  app.get("/audio/presets/:id", (c) => {
+    const id = Id.safeParse(c.req.param("id"));
+    if (!id.success) throw presetNotFound();
+    return c.json(presets.get(id.data));
+  });
+  app.patch("/audio/presets/:id", async (c) => {
+    const id = Id.safeParse(c.req.param("id"));
+    if (!id.success) throw presetNotFound();
+    return c.json(await presets.update(id.data, await jsonBody(c.req)));
+  });
+  app.delete("/audio/presets/:id", (c) => {
+    const id = Id.safeParse(c.req.param("id"));
+    if (!id.success) throw presetNotFound();
+    presets.remove(id.data);
+    return c.body(null, 204);
+  });
 
   app.get("/audio/models", async (c) => c.json(await service.models()));
 

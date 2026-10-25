@@ -25,7 +25,7 @@ import { ProviderError } from "../providers/port";
 import type { SpeechCatalog } from "../providers/speech-catalog";
 import type { SpeechProvider, SpeechRegistry, SpeechResult } from "../providers/speech-port";
 import type { FileStore } from "../storage/file-store";
-import { costFromResult, groupDigits, toRecordingDto } from "./domain";
+import { checkVoice, costFromResult, groupDigits, toRecordingDto } from "./domain";
 import type { RecordingRecord, RecordingsRepo } from "./repo";
 import { AudioConversionError, toPlayable } from "./wav";
 
@@ -100,15 +100,6 @@ export function createAudioService(deps: AudioServiceDeps) {
   const invalid = (field: string, message: string) =>
     new AppError("VALIDATION_ERROR", message, 400, { fields: { [field]: message } });
   const gone = () => new AppError("NOT_FOUND", "Recording not found", 404);
-
-  function checkVoice(model: SpeechModel, voice: string | null): void {
-    if (voice === null && model.voiceMode === "required")
-      throw new AppError("VALIDATION_ERROR", "Choose a voice", 400, { fields: { voice: "Choose a voice" } });
-    if (voice !== null && model.voiceMode === "required" && !model.voices.includes(voice))
-      throw new AppError("VALIDATION_ERROR", `${model.name} doesn't offer the voice «${voice}»`, 400, {
-        fields: { voice: "Choose one of this model's voices" },
-      });
-  }
 
   async function speak(p: SpeechProvider, input: Parameters<SpeechProvider["speak"]>[0]): Promise<SpeechResult> {
     const ac = new AbortController();
