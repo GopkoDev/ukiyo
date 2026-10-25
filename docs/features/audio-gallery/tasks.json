@@ -121,7 +121,7 @@
         "src/web/sections.test.tsx"
       ],
       "file": "docs/features/audio-gallery/tasks/T8-recording-route-and-section-detail.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T9",

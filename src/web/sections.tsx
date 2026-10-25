@@ -3,11 +3,13 @@ import type { ComponentType, ReactNode } from "react";
 import { SpeechPage } from "@/features/audio/SpeechPage";
 import { Gallery } from "@/features/gallery/Gallery";
 import { GalleryViews } from "@/features/gallery/GalleryViews";
+import { GenerationDetail } from "@/features/gallery/GenerationDetail";
+import { GenerationDialog } from "@/features/gallery/GenerationDialog";
 import { GeneratePanel } from "@/features/generate/GeneratePanel";
 import { JobIndicator } from "@/features/generate/job";
 import { RecentGenerations } from "@/features/generate/RecentGenerations";
 import { ModelsPage } from "@/features/models/ModelsPage";
-import type { Route } from "@/lib/router";
+import type { DetailRouteName, Route } from "@/lib/router";
 
 /** The blocks of the navigation bar, in order (CONTEXT: Section group; ADR-0046). */
 export const SECTION_GROUPS = [
@@ -36,6 +38,16 @@ export type Section = {
   indicator?: ComponentType;
   /** Claims addresses outside its own path, e.g. Gallery owns a generation's detail page. */
   owns?: (route: Route) => boolean;
+  /**
+   * How an owned item address renders (ADR-0048): the full page on a direct visit, the dialog over this section's
+   * grid on a visit from its own grid; `label` is the breadcrumb after the section.
+   */
+  detail?: {
+    route: DetailRouteName;
+    label: string;
+    Page: ComponentType<{ id: string }>;
+    Dialog: ComponentType<{ id: string }>;
+  };
 };
 
 function GalleryPage() {
@@ -77,6 +89,7 @@ export const SECTIONS: readonly Section[] = [
     icon: Images,
     page: GalleryPage,
     owns: (route) => route.name === "detail",
+    detail: { route: "detail", label: "Generation", Page: GenerationDetail, Dialog: GenerationDialog },
   },
   { id: "models", path: "/models", label: "Models", icon: Boxes, page: ModelsPage },
   {

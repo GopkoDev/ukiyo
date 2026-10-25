@@ -11,17 +11,15 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-import { GenerationDetail } from "@/features/gallery/GenerationDetail";
-import { GenerationDialog } from "@/features/gallery/GenerationDialog";
-import { isDialogVisit, Link, type Route, replace, useRoute } from "@/lib/router";
+import { isDetailRoute, isDialogVisit, Link, type Route, replace, useRoute } from "@/lib/router";
 import { SECTIONS, type Section, sectionFor } from "@/sections";
 
-/** Where the Owner is: the section, then «Generation» on a detail page; «Page not found» otherwise. */
+/** Where the Owner is: the section, then its item («Generation», «Recording») on a detail page; «Page not found» otherwise. */
 function Crumbs({ route, current }: { route: Route; current: Section | undefined }) {
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        {current && route.name === "detail" ? (
+        {current && isDetailRoute(route) ? (
           <>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
@@ -30,7 +28,7 @@ function Crumbs({ route, current }: { route: Route; current: Section | undefined
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>Generation</BreadcrumbPage>
+              <BreadcrumbPage>{current.detail?.label ?? "Item"}</BreadcrumbPage>
             </BreadcrumbItem>
           </>
         ) : (
@@ -59,6 +57,8 @@ export function App({ sections = SECTIONS }: { sections?: readonly Section[] }) 
   const route = useRoute();
   const dialog = isDialogVisit(route);
   const current = sectionFor(route, sections);
+  const detail = isDetailRoute(route) && current?.detail?.route === route.name ? current.detail : undefined;
+  const itemId = isDetailRoute(route) ? route.id : "";
 
   useEffect(() => {
     document.title = current ? `${current.label} · Ukiyo` : "Page not found · Ukiyo";
@@ -90,19 +90,19 @@ export function App({ sections = SECTIONS }: { sections?: readonly Section[] }) 
         <div className="min-w-0 flex-1 px-4 pb-6 md:px-6">
           {/* Kept-mounted pages sit at a fixed place in the tree, so showing or hiding them never remounts them. */}
           {sections.filter(mounted).map((s) => (
-            <div key={s.id} hidden={s !== current || route.name === "detail"}>
+            <div key={s.id} hidden={s !== current || isDetailRoute(route)}>
               <s.page />
             </div>
           ))}
           {/* The section page (the grid) sits at this one place for /gallery and a dialog visit, so it never remounts. */}
-          {route.name === "detail" && !dialog ? (
-            <GenerationDetail id={route.id} />
-          ) : !current ? (
+          {detail && !dialog ? (
+            <detail.Page id={itemId} />
+          ) : !current || (isDetailRoute(route) && !detail) ? (
             <NotFound />
           ) : (
             !current.keepMounted && <current.page />
           )}
-          {route.name === "detail" && dialog && <GenerationDialog id={route.id} />}
+          {detail && dialog && <detail.Dialog id={itemId} />}
         </div>
       </SidebarInset>
     </SidebarProvider>

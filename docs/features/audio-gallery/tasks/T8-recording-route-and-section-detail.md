@@ -9,8 +9,8 @@ files_hint: ["src/web/lib/router.tsx", "src/web/sections.tsx", "src/web/App.tsx"
 owner: "agent (sdd:implement)"
 estimate: "M"
 context_budget: "S"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T8 — Add the recording detail route and let sections own their detail renderers
