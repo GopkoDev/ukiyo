@@ -1,0 +1,102 @@
+openapi: 3.1.0
+info:
+  title: Ukiyo — models-page-audio
+  version: 0.1.0
+  description: >
+    Delta for roadmap step 20. (1) GET/PATCH /model-preferences gain an optional `kind` (image default — the
+    image contract is unchanged; speech reads/writes speech_model_preferences, ADR-0054). A speech write that
+    turns a flag on is checked against the speech catalog; all-off writes need no provider (ADR-0029 holds).
+    (2) New GET /providers/{providerId}/balance (ADR-0055). (3) Removed: GET /audio/credits (replaced by (2)).
+    Every /api route passes the request guard (ADR-0007); errors use { error: { code, message, details? } }.
+servers:
+  - url: http://127.0.0.1:8787/api
+security: []
+paths:
+  /model-preferences:
+    get:
+      operationId: listModelPreferences
+      parameters:
+        - { name: provider, in: query, required: true, schema: { $ref: "#/components/schemas/ProviderId" } }
+        - { name: kind, in: query, required: false, schema: { $ref: "#/components/schemas/PreferenceKind" } }
+      responses:
+        "200":
+          description: The provider's stored preferences of that kind
+          content: { application/json: { schema: { $ref: "#/components/schemas/PreferencesResponse" } } }
+        "400": { description: "VALIDATION_ERROR — bad provider/kind, or kind speech with a provider other than openrouter", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "403": { description: FORBIDDEN (request guard), content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+    patch:
+      operationId: setModelPreference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetPreferenceRequest" }
+            examples:
+              starSpeech: { value: { provider: openrouter, kind: speech, model: "elevenlabs/eleven-v3", favorite: true } }
+              forgetSpeech: { value: { provider: openrouter, kind: speech, model: "retired/tts", favorite: false, hidden: false } }
+      responses:
+        "200": { description: The preference after the change, content: { application/json: { schema: { $ref: "#/components/schemas/ModelPreference" } } } }
+        "400": { description: VALIDATION_ERROR, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "403": { description: FORBIDDEN, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "404": { description: "NOT_FOUND — unknown provider (for kind speech: any provider without speech, i.e. not openrouter), or (flag on only) a model the kind's catalog doesn't offer", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "409": { description: "PROVIDER_NOT_CONFIGURED — flag on only", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "502": { description: "PROVIDER_ERROR — the kind's model list couldn't be loaded; flag on only", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /providers/{providerId}/balance:
+    get:
+      operationId: providerBalance
+      summary: The provider's remaining credit; a failed / timed-out (10 s) / unparseable read is null, not an error
+      parameters:
+        - { name: providerId, in: path, required: true, schema: { $ref: "#/components/schemas/ProviderId" } }
+      responses:
+        "200":
+          description: The figure, or null when it couldn't be read
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BalanceResponse" }
+              example: { provider: openrouter, remainingUsd: 12.34 }
+        "403": { description: FORBIDDEN, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "404": { description: NOT_FOUND — unknown provider, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "409": { description: PROVIDER_NOT_CONFIGURED, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+components:
+  schemas:
+    ProviderId: { type: string, enum: [openrouter, vercel] }
+    PreferenceKind: { type: string, enum: [image, speech], default: image }
+    ModelPreference:
+      type: object
+      required: [provider, model, favorite, hidden, updatedAt]
+      properties:
+        provider: { $ref: "#/components/schemas/ProviderId" }
+        model: { type: string, minLength: 1, maxLength: 200 }
+        favorite: { type: boolean }
+        hidden: { type: boolean }
+        updatedAt: { type: [string, "null"], format: date-time }
+    PreferencesResponse:
+      type: object
+      required: [preferences]
+      properties: { preferences: { type: array, items: { $ref: "#/components/schemas/ModelPreference" } } }
+    SetPreferenceRequest:
+      type: object
+      required: [provider, model]
+      additionalProperties: false
+      properties:
+        provider: { type: string, minLength: 1 }
+        kind: { $ref: "#/components/schemas/PreferenceKind" }
+        model: { type: string, minLength: 1, maxLength: 200 }
+        favorite: { type: boolean }
+        hidden: { type: boolean }
+      description: At least one of favorite / hidden is required.
+    BalanceResponse:
+      type: object
+      required: [provider, remainingUsd]
+      additionalProperties: false
+      properties:
+        provider: { $ref: "#/components/schemas/ProviderId" }
+        remainingUsd: { type: [number, "null"], description: "USD left; null = the read failed, timed out or was unparseable" }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties: { code: { type: string }, message: { type: string }, details: { type: object } }
