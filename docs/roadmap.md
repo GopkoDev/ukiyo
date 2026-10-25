@@ -39,7 +39,7 @@ The single owner, on one machine, generates images from text and/or input images
 | 18 | Text to speech — the navigation splits into an Image and an Audio section; the Speech page is rebuilt on project conventions (speech adapter behind a port, file store, service/repo); every OpenRouter speech model with its own controls; audio rows + files with a cost status, estimated up front and reconciled later through the stored OpenRouter generation id | owner request (audio epic) | M | shipped → [`features/text-to-speech`](./features/text-to-speech/spec.md) |
 | 19 | Audio gallery — a paged gallery of audio cards with a player (price, text, model, voice, settings badges), a detail modal with ← →, tags, comments, delete, filter by model | owner request (audio epic) | M | shipped → [`features/audio-gallery`](./features/audio-gallery/spec.md) |
 | 20 | Models page with audio — Image \| Audio tabs; the audio table shows price, limits and voices, with ★ / hide like image models; + the remaining provider balance (OpenRouter /credits; Vercel AI Gateway if it exposes one, else «—») shown in the left navbar on every page, refreshed after each generation and on an interval (owner request 2026-10-25) | owner request (audio epic) | M | shipped → [`features/models-page-audio`](./features/models-page-audio/spec.md) |
-| 21 | Voice presets — save voice + model + settings under a name and reuse it; a «Voices» section in the audio gallery lists every recording made with a preset | owner request (audio epic) | M | idea |
+| 21 | Voice presets — save voice + model + settings under a name and reuse it; a «Voices» section in the Audio group lists the presets and every recording made with one | owner request (audio epic) | M | spec'd → [`features/voice-presets`](./features/voice-presets/spec.md) |
 
 > **Audio prototype.** Commits `a1169a1` and `cbb9c47` on `feature/audio-generation` are a working
 > prototype (ElevenLabs only), not a step: step 18 reuses its UI and code where it fits and rewrites
@@ -111,7 +111,7 @@ flowchart LR
   s18 -->|speech model catalog from the speech adapter| s20["20 · Models page with audio"]
   s10 -->|Models page and per-model preference store to extend| s20
   s18 -->|a preset stores the voice, model and settings a request takes| s21["21 · Voice presets"]
-  s19 -->|the Voices section lists recordings with the gallery cards| s21
+  s19 -->|a preset's page lists its recordings with the gallery cards| s21
 ```
 
 ## Execution path
