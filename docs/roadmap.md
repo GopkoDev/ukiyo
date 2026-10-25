@@ -38,9 +38,8 @@ The single owner, on one machine, generates images from text and/or input images
 | 17 | Canvas image editor — edit an image on a canvas and feed the result back as an input | owner request (V3) | fog | idea |
 | 18 | Text to speech — the navigation splits into an Image and an Audio section; the Speech page is rebuilt on project conventions (speech adapter behind a port, file store, service/repo); every OpenRouter speech model with its own controls; audio rows + files with a cost status, estimated up front and reconciled later through the stored OpenRouter generation id | owner request (audio epic) | M | shipped → [`features/text-to-speech`](./features/text-to-speech/spec.md) |
 | 19 | Audio gallery — a paged gallery of audio cards with a player (price, text, model, voice, settings badges), a detail modal with ← →, tags, comments, delete, filter by model | owner request (audio epic) | M | spec'd → [`features/audio-gallery`](./features/audio-gallery/spec.md) |
-| 20 | Models page with audio — Image \| Audio tabs; the audio table shows price, limits and voices, with ★ / hide like image models | owner request (audio epic) | S | idea |
+| 20 | Models page with audio — Image \| Audio tabs; the audio table shows price, limits and voices, with ★ / hide like image models; + the remaining provider balance (OpenRouter /credits; Vercel AI Gateway if it exposes one, else «—») shown in the left navbar on every page, refreshed after each generation and on an interval (owner request 2026-10-25) | owner request (audio epic) | S | idea |
 | 21 | Voice presets — save voice + model + settings under a name and reuse it; a «Voices» section in the audio gallery lists every recording made with a preset | owner request (audio epic) | M | idea |
-| 22 | Provider balance in the navigation — the remaining balance of every configured provider that exposes one (OpenRouter credits, already read by step 18; Vercel AI Gateway if its API offers a balance read — checked in specify), shown in the left navbar on every page (Image and Audio sections), «—» for a provider without a readable balance; refreshes after each generation and on an interval; the key never leaves the server | owner request 2026-10-25 | XS/S | idea |
 
 > **Audio prototype.** Commits `a1169a1` and `cbb9c47` on `feature/audio-generation` are a working
 > prototype (ElevenLabs only), not a step: step 18 reuses its UI and code where it fits and rewrites
@@ -113,7 +112,6 @@ flowchart LR
   s10 -->|Models page and per-model preference store to extend| s20
   s18 -->|a preset stores the voice, model and settings a request takes| s21["21 · Voice presets"]
   s19 -->|the Voices section lists recordings with the gallery cards| s21
-  s18 -->|OpenRouter credits read and the grouped navigation bar| s22["22 · Provider balance in nav"]
 ```
 
 ## Execution path
@@ -132,9 +130,8 @@ flowchart LR
 | 10 | 13 | `src/web/features/gallery/` + `src/server/modules/generations/` list query | 14 |
 | 11 | 14 | `src/web/features/gallery/` + `src/server/modules/generations/` (prompt-group key) | 15 |
 | 12 | 18 | `src/server/modules/audio/` + `src/server/modules/providers/` speech adapter (new) + `src/web/features/audio/` + `src/web/sections.tsx` / `src/web/components/app-sidebar.tsx` (nav groups). The owner's current priority, so it goes before step 15; both edit the navigation, so they don't share a wave | 19, 20, 21 |
-| 13 | 19 ∥ 20 | 19: `src/server/modules/audio/` list + curation tables + `src/web/features/audio/` gallery · 20: `src/web/features/models/` tabs + `src/server/modules/models/` (audio preferences). Disjoint modules; 20 reads the speech catalog step 18 ships | 21 |
+| 13 | 19 ∥ 20 | 19: `src/server/modules/audio/` list + curation tables + `src/web/features/audio/` gallery · 20: `src/web/features/models/` tabs + `src/server/modules/models/` (audio preferences) + the balance in `src/web/components/app-sidebar.tsx` and a credits read in `src/server/modules/providers/`. Disjoint modules (19 edits `sections.tsx`, not the sidebar component); 20 reads the speech catalog and the credits read step 18 ships | 21 |
 | 14 | 21 | `src/server/modules/audio/` presets (new table) + `src/web/features/audio/` save button and Voices section | — |
-| 14′ | 22 | `src/web/components/app-sidebar.tsx` footer + a small balance read in `src/server/modules/providers/` (credits per provider). Depends on 18 only; touches neither the audio gallery nor the Models page, so it may run in a parallel lane with 19–21 (worktree) | — |
 | 15 | 15 | `src/server/modules/folders/` (new) + `src/web/features/folders/` (new) + `src/web/features/generate/` folder picker | — |
 | — | 16, 17 | fog: waved once their recon pass sizes them | — |
 
