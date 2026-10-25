@@ -15,7 +15,7 @@
         "src/server/modules/audio/migration.int.test.ts"
       ],
       "file": "docs/features/audio-gallery/tasks/T1-promote-audio-curation-migrations.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T2",

@@ -97,6 +97,7 @@ describe("migration 0012_rebuild_audio_generations", () => {
          cost_status, created_at) VALUES ('01N0000000000000000000000D', 'openrouter', 'fish-audio/s1', NULL, 'Hi', '{}',
          'audio/01N0000000000000000000000D.mp3', 'audio/mpeg', 2, 'unavailable', '2026-10-25T10:00:00.000Z')`,
     ).run();
+    while (appliedVersions(db).at(-1) !== "0012") migrateDown(db); // later migrations (0013+) first
     migrateDown(db);
     expect(appliedVersions(db).at(-1)).toBe("0011");
     const cols = db.prepare("SELECT name FROM pragma_table_info('audio_generations')").pluck().all();

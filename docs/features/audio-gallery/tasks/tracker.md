@@ -7,7 +7,7 @@
 
 | # | Task | Layer | Owner | Estimate | Blocked by | Status | Step |
 |---|---|---|---|---|---|---|---|
-| T1 | Promote the audio curation migrations and test them on prototype-shaped data | migration | agent | S | — | todo | — |
+| T1 | Promote the audio curation migrations and test them on prototype-shaped data | migration | agent | S | — | done | COMMIT |
 | T2 | Add model filter, model groups, stored names and tag/comment statements to the recordings repo | infra | agent | M | T1 | todo | — |
 | T3 | Expose model filter, model groups and curation through the audio service, routes and shared schemas | ports | agent | M | T2 | todo | — |
 | T4 | Add the audio gallery's server timing tests | tests | agent | S | T3 | todo | — |

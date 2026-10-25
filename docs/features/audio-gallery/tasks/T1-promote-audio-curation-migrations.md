@@ -9,8 +9,8 @@ files_hint: ["docs/features/audio-gallery/migrations/01_create_audio_curation.up
 owner: "agent (sdd:implement)"
 estimate: "S"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T1 — Promote the audio curation migrations and test them on prototype-shaped data
