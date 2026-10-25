@@ -9,9 +9,14 @@ export const TINY_MP3 = new Uint8Array([0x49, 0x44, 0x33, 4, 0, 0, 0, 0, 0, 1]);
 let seq = 0;
 
 /** Inserts a complete recording (row + tiny audio file on disk). No PII — test texts only. */
-export function seedRecording(db: Db, dataDir: string, overrides: Partial<RecordingRecord> = {}): RecordingRecord {
+export function seedRecording(
+  db: Db,
+  dataDir: string,
+  overrides: Partial<RecordingRecord> & { tags?: string[]; comment?: string } = {},
+): RecordingRecord {
+  const { tags = [], comment, ...over } = overrides;
   seq += 1;
-  const id = overrides.id ?? `01SEEDREC${String(seq).padStart(17, "0")}`;
+  const id = over.id ?? `01SEEDREC${String(seq).padStart(17, "0")}`;
   const rec: RecordingRecord = {
     id,
     provider: "openrouter",
@@ -29,11 +34,14 @@ export function seedRecording(db: Db, dataDir: string, overrides: Partial<Record
     estimateMicros: 1040,
     createdAt: new Date(Date.UTC(2026, 9, 25, 10, 0, seq % 60)).toISOString(),
     durationMs: 900,
-    ...overrides,
+    ...over,
   };
   createRecordingsRepo(db).insertAtomic(rec, () => {
     mkdirSync(join(dataDir, "audio"), { recursive: true });
     writeFileSync(join(dataDir, rec.filePath), TINY_MP3);
   });
+  const repo = createRecordingsRepo(db);
+  for (const tag of tags) repo.addTag(rec.id, tag);
+  if (comment !== undefined) repo.setComment(rec.id, comment, rec.createdAt);
   return rec;
 }

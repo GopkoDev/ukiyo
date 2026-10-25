@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_TAGS } from "../../../shared/curation";
 import { AudioMediaType, CostStatus, VoiceSettings } from "../../../shared/speech";
 import type { Db } from "../../db/client";
 
@@ -43,6 +44,20 @@ const Row = z
   }));
 
 export type RecordingRecord = z.output<typeof Row>;
+export type RecordingComment = { body: string; updatedAt: string };
+export type RecordingCuration = { tags: string[]; comment: RecordingComment | null };
+
+const CommentRow = z
+  .object({ audio_generation_id: z.string(), body: z.string(), updated_at: z.string() })
+  .transform((r) => ({ id: r.audio_generation_id, comment: { body: r.body, updatedAt: r.updated_at } }));
+const TagRow = z.object({ audio_generation_id: z.string(), tag: z.string() });
+const GroupRow = z.object({
+  provider: z.string(),
+  model: z.string(),
+  count: z.number().int(),
+  latest_id: z.string(),
+});
+const NameRow = z.object({ model: z.string(), model_name: z.string() });
 export type PendingRecordingCost = { id: string; provider: string; costRef: string | null; answeredAt: number };
 
 const PendingRow = z.object({
@@ -64,6 +79,34 @@ export function createRecordingsRepo(db: Db) {
   const getStmt = db.prepare("SELECT * FROM audio_generations WHERE id = ?");
   const firstPage = db.prepare("SELECT * FROM audio_generations ORDER BY id DESC LIMIT ?");
   const nextPage = db.prepare("SELECT * FROM audio_generations WHERE id < ? ORDER BY id DESC LIMIT ?");
+  // One model's recordings (audio_generations_by_model, migration 0014).
+  const modelFirstPage = db.prepare("SELECT * FROM audio_generations WHERE model = ? ORDER BY id DESC LIMIT ?");
+  const modelNextPage = db.prepare(
+    "SELECT * FROM audio_generations WHERE model = ? AND id < ? ORDER BY id DESC LIMIT ?",
+  );
+  const selectGroups = db.prepare(
+    `SELECT g.model, g.count, g.latest_id, a.provider
+       FROM (SELECT model, count(*) AS count, max(id) AS latest_id FROM audio_generations GROUP BY model) g
+       JOIN audio_generations a ON a.id = g.latest_id
+      ORDER BY g.latest_id DESC`,
+  );
+  const exists = db.prepare("SELECT 1 FROM audio_generations WHERE id = ?").pluck();
+  const upsertComment = db.prepare(
+    `INSERT INTO audio_generation_comments (audio_generation_id, body, updated_at) VALUES (@id, @body, @updatedAt)
+     ON CONFLICT (audio_generation_id) DO UPDATE SET body = excluded.body, updated_at = excluded.updated_at`,
+  );
+  const deleteComment = db.prepare("DELETE FROM audio_generation_comments WHERE audio_generation_id = ?");
+  const selectTags = db
+    .prepare("SELECT tag FROM audio_generation_tags WHERE audio_generation_id = ? ORDER BY position")
+    .pluck();
+  const tagExists = db.prepare("SELECT 1 FROM audio_generation_tags WHERE audio_generation_id = ? AND tag = ?").pluck();
+  const countTags = db.prepare("SELECT count(*) FROM audio_generation_tags WHERE audio_generation_id = ?").pluck();
+  const insertTag = db.prepare(
+    `INSERT INTO audio_generation_tags (audio_generation_id, tag, position)
+     VALUES (@id, @tag, (SELECT coalesce(max(position), 0) + 1 FROM audio_generation_tags WHERE audio_generation_id = @id))`,
+  );
+  const deleteTag = db.prepare("DELETE FROM audio_generation_tags WHERE audio_generation_id = ? AND tag = ?");
+  const tagsOfId = (id: string) => selectTags.all(id) as string[];
   const deleteStmt = db.prepare("DELETE FROM audio_generations WHERE id = ?");
   const selectIds = db.prepare("SELECT id FROM audio_generations").pluck();
   const selectPending = db.prepare(
@@ -77,6 +120,14 @@ export function createRecordingsRepo(db: Db) {
     insertStmt.run({ ...rec, settings: JSON.stringify(rec.settings) });
     commitFile(); // last step: if it throws, the transaction rolls back (ADR-0042)
   });
+  const addTagTx = db.transaction((id: string, tag: string) => {
+    if (!exists.get(id)) return { status: "missing" as const };
+    if (tagExists.get(id, tag)) return { status: "duplicate" as const, tags: tagsOfId(id) };
+    if ((countTags.get(id) as number) >= MAX_TAGS) return { status: "limit" as const, tags: tagsOfId(id) };
+    insertTag.run({ id, tag });
+    return { status: "added" as const, tags: tagsOfId(id) };
+  });
+  const placeholders = (n: number) => Array.from({ length: n }, () => "?").join(",");
   const deleteTx = db.transaction((id: string, moveFile: (filePath: string) => void) => {
     const raw = getStmt.get(id);
     if (!raw) return undefined;
@@ -97,11 +148,20 @@ export function createRecordingsRepo(db: Db) {
       return raw ? Row.parse(raw) : undefined;
     },
 
-    /** Newest first; `cursor` = the last id shown, the page continues after it. */
-    list(q: { cursor?: string; limit: number }): { items: RecordingRecord[]; nextCursor: string | null } {
-      const rows = (q.cursor ? nextPage.all(q.cursor, q.limit + 1) : firstPage.all(q.limit + 1)).map((r) =>
-        Row.parse(r),
-      );
+    /** Newest first; `cursor` = the last id shown, the page continues after it; `model` = one exact model id. */
+    list(q: { cursor?: string; limit: number; model?: string }): {
+      items: RecordingRecord[];
+      nextCursor: string | null;
+    } {
+      const raw =
+        q.model !== undefined
+          ? q.cursor
+            ? modelNextPage.all(q.model, q.cursor, q.limit + 1)
+            : modelFirstPage.all(q.model, q.limit + 1)
+          : q.cursor
+            ? nextPage.all(q.cursor, q.limit + 1)
+            : firstPage.all(q.limit + 1);
+      const rows = raw.map((r) => Row.parse(r));
       const items = rows.slice(0, q.limit);
       return { items, nextCursor: rows.length > q.limit ? (items.at(-1)?.id ?? null) : null };
     },
@@ -109,6 +169,81 @@ export function createRecordingsRepo(db: Db) {
     /** Deletes a recording; `moveFile` runs as the transaction's last step. `undefined` = no such id. */
     deleteAtomic(id: string, moveFile: (filePath: string) => void): RecordingRecord | undefined {
       return deleteTx(id, moveFile);
+    },
+
+    /** Every model id with recordings: its count, newest id and up to `latest` newest rows; newest model first. */
+    modelGroups(q: { latest: number }) {
+      return selectGroups.all().map((raw) => {
+        const g = GroupRow.parse(raw);
+        const items = q.latest > 0 ? modelFirstPage.all(g.model, q.latest).map((r) => Row.parse(r)) : [];
+        return { provider: g.provider, model: g.model, count: g.count, latestId: g.latest_id, items };
+      });
+    },
+
+    /** The name stored with each model's newest recording that has one; models without one are absent (ADR-0052). */
+    storedNames(models: readonly string[]): Map<string, string> {
+      const unique = [...new Set(models)];
+      if (unique.length === 0) return new Map();
+      const rows = db
+        .prepare(
+          `SELECT a.model, a.model_name FROM audio_generations a
+            WHERE a.id = (SELECT max(b.id) FROM audio_generations b WHERE b.model = a.model AND b.model_name IS NOT NULL)
+              AND a.model IN (${placeholders(unique.length)})`,
+        )
+        .all(...unique);
+      return new Map(rows.map((r) => NameRow.parse(r)).map((r) => [r.model, r.model_name]));
+    },
+
+    /** Tags (insertion order) and the comment of several recordings in two queries; unknown ids get none. */
+    curationOf(ids: readonly string[]): Map<string, RecordingCuration> {
+      const out = new Map<string, RecordingCuration>(ids.map((id) => [id, { tags: [], comment: null }]));
+      if (ids.length === 0) return out;
+      const marks = placeholders(ids.length);
+      for (const raw of db
+        .prepare(
+          `SELECT audio_generation_id, tag FROM audio_generation_tags WHERE audio_generation_id IN (${marks})
+            ORDER BY audio_generation_id, position`,
+        )
+        .all(...ids)) {
+        const r = TagRow.parse(raw);
+        out.get(r.audio_generation_id)?.tags.push(r.tag);
+      }
+      for (const raw of db
+        .prepare(
+          `SELECT audio_generation_id, body, updated_at FROM audio_generation_comments WHERE audio_generation_id IN (${marks})`,
+        )
+        .all(...ids)) {
+        const r = CommentRow.parse(raw);
+        const entry = out.get(r.id);
+        if (entry) entry.comment = r.comment;
+      }
+      return out;
+    },
+
+    /** Replaces the comment (`null` removes it). */
+    setComment(
+      id: string,
+      body: string | null,
+      updatedAt: string,
+    ): { status: "ok"; comment: RecordingComment | null } | { status: "missing" } {
+      if (!exists.get(id)) return { status: "missing" };
+      if (body === null) {
+        deleteComment.run(id);
+        return { status: "ok", comment: null };
+      }
+      upsertComment.run({ id, body, updatedAt });
+      return { status: "ok", comment: { body, updatedAt } };
+    },
+
+    /** Adds one normalized tag: dedup, at most `MAX_TAGS`, inside one transaction (as for images, ADR-0015). */
+    addTag(id: string, tag: string) {
+      return addTagTx(id, tag);
+    },
+
+    removeTag(id: string, tag: string): { status: "ok"; tags: string[] } | { status: "missing" } {
+      if (!exists.get(id)) return { status: "missing" };
+      deleteTag.run(id, tag);
+      return { status: "ok", tags: tagsOfId(id) };
     },
 
     allIds(): string[] {

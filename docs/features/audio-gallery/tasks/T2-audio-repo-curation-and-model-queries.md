@@ -9,8 +9,8 @@ files_hint: ["src/server/modules/audio/repo.ts", "src/server/modules/audio/repo.
 owner: "agent (sdd:implement)"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T2 — Add model filter, model groups, stored names and tag/comment statements to the recordings repo

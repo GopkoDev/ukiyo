@@ -30,7 +30,7 @@
         "tests/helpers/recordings.ts"
       ],
       "file": "docs/features/audio-gallery/tasks/T2-audio-repo-curation-and-model-queries.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T3",
