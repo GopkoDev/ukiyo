@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { installPlayback, pauseAll } from "@/lib/playback";
 import { isDetailRoute, isDialogVisit, Link, type Route, replace, useRoute } from "@/lib/router";
-import { SECTIONS, type Section, sectionFor } from "@/sections";
+import { pathPart, SECTIONS, type Section, sectionFor } from "@/sections";
 
 /** Where the Owner is: the section, then its item («Generation», «Recording») on a detail page; «Page not found» otherwise. */
 function Crumbs({ route, current }: { route: Route; current: Section | undefined }) {
@@ -73,9 +73,9 @@ export function App({ sections = SECTIONS }: { sections?: readonly Section[] }) 
 
   // A former address (alias) opens its section and the address bar shows the current one — no history entry (ADR-0046).
   const aliased =
-    route.name === "page" && current !== undefined && current.path !== route.pathname.replace(/(.)\/$/, "$1");
+    route.name === "page" && current !== undefined && pathPart(current.path) !== route.pathname.replace(/(.)\/$/, "$1");
   useEffect(() => {
-    if (aliased && current && route.name === "page") replace(current.path + route.search);
+    if (aliased && current && route.name === "page") replace(pathPart(current.path) + route.search);
   }, [aliased, current, route]);
 
   // «after-visit» sections mount on their first visit and then stay mounted (ADR-0045).

@@ -6,11 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
+import { navigate, useRoute } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import type { ModelPreference } from "../../../shared/models";
 import type { ImageModel, ProviderId } from "../../../shared/providers";
 import { useShortPrice } from "../generate/PricePreview";
+import { AudioModels } from "./AudioModels";
 import { describeParams } from "./params";
 import { type SetPreferenceVars, useModelPreferences, useSetModelPreference } from "./preferences";
 
@@ -262,8 +265,43 @@ function ProviderCard({ info }: { info: ProviderInfo }) {
   );
 }
 
-/** SCR-08: every configured provider's image models with price, parameters and the ★ / «show in picker» toggles. */
+export const MODELS_PATH = "/models";
+export type ModelsTab = "image" | "audio";
+/** The view the address names; anything but `?tab=audio` is the Image view (spec AC-09). */
+export const modelsTab = (search: string): ModelsTab =>
+  new URLSearchParams(search).get("tab") === "audio" ? "audio" : "image";
+
+/** The Models page: Image | Audio, the tab kept in the address (models-page-audio SCR-01 / SCR-02, ADR-0056). */
 export function ModelsPage() {
+  const route = useRoute();
+  const tab = route.name === "page" ? modelsTab(route.search) : "image";
+  return (
+    <section aria-label="Models" className="flex flex-col gap-4">
+      <h2 className="font-semibold">Models</h2>
+      <Tabs
+        value={tab}
+        // One history entry per switch: a focus after the press reports the same value again.
+        onValueChange={(v) =>
+          v !== modelsTab(window.location.search) && navigate(v === "audio" ? `${MODELS_PATH}?tab=audio` : MODELS_PATH)
+        }
+      >
+        <TabsList>
+          <TabsTrigger value="image">Image</TabsTrigger>
+          <TabsTrigger value="audio">Audio</TabsTrigger>
+        </TabsList>
+        <TabsContent value="image" className="flex flex-col gap-4">
+          <ImageModels />
+        </TabsContent>
+        <TabsContent value="audio" className="flex flex-col gap-4">
+          <AudioModels />
+        </TabsContent>
+      </Tabs>
+    </section>
+  );
+}
+
+/** SCR-08 (step 10): every configured provider's image models with price, parameters and the ★ / «show in picker» toggles. */
+function ImageModels() {
   const providers = useQuery({ queryKey: ["providers"], queryFn: api.providers });
   const list = providers.data?.providers ?? [];
   let body: React.ReactNode;
@@ -284,10 +322,5 @@ export function ModelsPage() {
       </p>
     );
   else body = list.map((p) => <ProviderCard key={p.id} info={p} />);
-  return (
-    <section aria-label="Models" className="flex flex-col gap-4">
-      <h2 className="font-semibold">Models</h2>
-      {body}
-    </section>
-  );
+  return body;
 }

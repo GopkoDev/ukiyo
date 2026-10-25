@@ -14,6 +14,7 @@ describe("sections registry", () => {
       ["models", "/models", "Models", "image"],
       ["speech", "/audio/speech", "Speech", "audio"],
       ["audio-gallery", "/audio/gallery", "Gallery", "audio"],
+      ["audio-models", "/models?tab=audio", "Models", "audio"],
     ]);
     expect(SECTION_GROUPS.map((g) => [g.id, g.label])).toEqual([
       ["image", "Image"],
@@ -22,6 +23,17 @@ describe("sections registry", () => {
     const speech = SECTIONS.find((s) => s.id === "speech");
     expect(speech?.aliases).toEqual(["/speech"]);
     expect(speech?.keepMounted).toBe("after-visit");
+  });
+
+  it("serves the Models page as two sections by its tab (models-page-audio ADR-0056)", () => {
+    const at = (pathname: string, search = "") => sectionFor({ name: "page", pathname, search })?.id;
+    expect(at("/models")).toBe("models");
+    expect(at("/models", "?tab=image")).toBe("models");
+    expect(at("/models", "?tab=nonsense")).toBe("models");
+    expect(at("/models", "?tab=audio")).toBe("audio-models");
+    expect(at("/models/", "?tab=audio")).toBe("audio-models");
+    expect(SECTIONS.find((s) => s.id === "audio-models")?.accessibleName).toBe("Audio models");
+    expect(SECTIONS.find((s) => s.id === "models")?.accessibleName).toBeUndefined();
   });
 
   it("finds Speech at its former address too", () => {
@@ -102,7 +114,7 @@ describe("sections registry", () => {
       within(audio)
         .getAllByRole("link")
         .map((l) => l.textContent),
-    ).toEqual(["Speech", "Gallery"]);
+    ).toEqual(["Speech", "Gallery", "Models"]);
     expect(within(image).getByRole("link", { name: "Models" })).toHaveAttribute("aria-current", "page");
     expect(within(audio).getByRole("link", { name: "Speech" })).toHaveAttribute("href", "/audio/speech");
     window.history.replaceState(null, "", "/");

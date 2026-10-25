@@ -209,7 +209,7 @@ describe("in the app (AC-01)", () => {
       within(audio)
         .getAllByRole("link")
         .map((l) => l.textContent),
-    ).toEqual(["Speech", "Gallery"]);
+    ).toEqual(["Speech", "Gallery", "Models"]);
     expect(within(audio).getByRole("link", { name: "Audio gallery" })).toHaveAttribute("aria-current", "page");
     fireEvent.click(await screen.findByText(/Recording number 1/));
     await waitFor(() => expect(route && isDialogVisit(route)).toBe(true));

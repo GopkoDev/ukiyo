@@ -11,7 +11,7 @@ import { GenerationDialog } from "@/features/gallery/GenerationDialog";
 import { GeneratePanel } from "@/features/generate/GeneratePanel";
 import { JobIndicator } from "@/features/generate/job";
 import { RecentGenerations } from "@/features/generate/RecentGenerations";
-import { ModelsPage } from "@/features/models/ModelsPage";
+import { MODELS_PATH, ModelsPage, modelsTab } from "@/features/models/ModelsPage";
 import type { DetailRouteName, Route } from "@/lib/router";
 
 /** The blocks of the navigation bar, in order (CONTEXT: Section group; ADR-0046). */
@@ -77,6 +77,9 @@ function GeneratePage() {
   );
 }
 
+const trimSlash = (pathname: string) =>
+  pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+
 export const SECTIONS: readonly Section[] = [
   {
     id: "generate",
@@ -96,7 +99,7 @@ export const SECTIONS: readonly Section[] = [
     owns: (route) => route.name === "detail",
     detail: { route: "detail", label: "Generation", Page: GenerationDetail, Dialog: GenerationDialog },
   },
-  { id: "models", path: "/models", label: "Models", icon: Boxes, page: ModelsPage },
+  { id: "models", path: MODELS_PATH, label: "Models", icon: Boxes, page: ModelsPage },
   {
     id: "speech",
     path: "/audio/speech",
@@ -118,6 +121,18 @@ export const SECTIONS: readonly Section[] = [
     owns: (route) => route.name === "recording",
     detail: { route: "recording", label: "Recording", Page: RecordingPage, Dialog: RecordingDialog },
   },
+  {
+    // The Models page on its Audio view — one page, two sections by its tab (ADR-0056).
+    id: "audio-models",
+    path: `${MODELS_PATH}?tab=audio`,
+    group: "audio",
+    label: "Models",
+    accessibleName: "Audio models",
+    icon: Boxes,
+    page: ModelsPage,
+    owns: (route) =>
+      route.name === "page" && trimSlash(route.pathname) === MODELS_PATH && modelsTab(route.search) === "audio",
+  },
 ];
 
 export const groupOf = (s: Section): SectionGroup => s.group ?? "image";
@@ -129,7 +144,10 @@ export function sectionFor(route: Route, sections: readonly Section[] = SECTIONS
   );
 }
 
+/** A section's path without its query (`/models?tab=audio` → `/models`, ADR-0056). */
+export const pathPart = (path: string) => path.split("?")[0] ?? path;
+
 function matchPath(pathname: string, sections: readonly Section[]) {
-  const path = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+  const path = trimSlash(pathname);
   return sections.find((s) => s.path === path || s.aliases?.includes(path));
 }
