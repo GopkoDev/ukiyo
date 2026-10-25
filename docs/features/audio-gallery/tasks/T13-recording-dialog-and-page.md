@@ -9,8 +9,8 @@ files_hint: ["src/web/features/audio/gallery/RecordingDialog.tsx", "src/web/feat
 owner: "agent (sdd:implement)"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T13 — Build the recording dialog and page with notes, details and delete

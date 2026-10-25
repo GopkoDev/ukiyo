@@ -1,6 +1,8 @@
 import { AudioLines, Boxes, Images, Library, type LucideIcon, Sparkles } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { AudioGalleryPage } from "@/features/audio/gallery/AudioGallery";
+import { RecordingPage } from "@/features/audio/gallery/RecordingDetail";
+import { RecordingDialog } from "@/features/audio/gallery/RecordingDialog";
 import { SpeechPage } from "@/features/audio/SpeechPage";
 import { Gallery } from "@/features/gallery/Gallery";
 import { GalleryViews } from "@/features/gallery/GalleryViews";
@@ -114,6 +116,7 @@ export const SECTIONS: readonly Section[] = [
     icon: Library,
     page: AudioGalleryPage,
     owns: (route) => route.name === "recording",
+    detail: { route: "recording", label: "Recording", Page: RecordingPage, Dialog: RecordingDialog },
   },
 ];
 

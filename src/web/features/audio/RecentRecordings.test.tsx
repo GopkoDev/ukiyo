@@ -112,7 +112,7 @@ describe("Recent recordings (SCR-04)", () => {
     const first = (await screen.findAllByRole("listitem"))[0] as HTMLElement;
     fireEvent.click(within(first).getByRole("button", { name: /Delete recording/ }));
     const dialog = await screen.findByRole("dialog", { name: "Delete this recording?" });
-    expect(dialog).toHaveTextContent("Its audio file is deleted too. This can't be undone.");
+    expect(dialog).toHaveTextContent("Its audio file, tags and comment are deleted too. This can't be undone.");
     expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
     m.recordings.mockResolvedValue({ items: [rec(1)], nextCursor: null });
     fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));

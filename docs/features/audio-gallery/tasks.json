@@ -204,7 +204,7 @@
         "src/web/features/audio/gallery/RecordingDialog.test.tsx"
       ],
       "file": "docs/features/audio-gallery/tasks/T13-recording-dialog-and-page.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T14",
