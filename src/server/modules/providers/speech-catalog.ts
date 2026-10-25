@@ -31,10 +31,6 @@ export function createSpeechCatalog(providers: SpeechRegistry, now: () => number
 
   return {
     models,
-    /** The model, or `undefined` when the catalog doesn't list it; throws when the catalog can't be loaded. */
-    async find(providerId: string, modelId: string): Promise<SpeechModel | undefined> {
-      return (await models(providerId)).models.find((m) => m.id === modelId);
-    },
   };
 }
 

@@ -45,5 +45,7 @@ describe("toPlayable", () => {
     expect(() => toPlayable(new Uint8Array(0), "audio/pcm")).toThrow(AudioConversionError);
     expect(() => toPlayable(pcm(4), "audio/pcm;rate=0")).toThrow(AudioConversionError);
     expect(() => toPlayable(pcm(8), "audio/ogg")).toThrow(AudioConversionError);
+    // RFC 2586 L16 is big-endian; WAV PCM is little-endian — refused rather than saved as noise
+    expect(() => toPlayable(pcm(8), "audio/L16;rate=24000")).toThrow(AudioConversionError);
   });
 });

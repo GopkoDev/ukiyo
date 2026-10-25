@@ -50,8 +50,8 @@ function wavHeader(dataBytes: number, rate: number, channels: number): Uint8Arra
 export function toPlayable(bytes: Uint8Array, mediaType: string): { bytes: Uint8Array; mediaType: AudioMediaType } {
   const { type, rate, channels } = params(mediaType);
   if (type === "audio/mpeg" || type === "audio/mp3") return { bytes, mediaType: "audio/mpeg" };
-  if (type !== "audio/pcm" && type !== "audio/l16")
-    throw new AudioConversionError(`Unsupported audio type: ${type || "none"}`);
+  // `audio/L16` (RFC 2586) is big-endian; only little-endian `audio/pcm` is wrapped as is.
+  if (type !== "audio/pcm") throw new AudioConversionError(`Unsupported audio type: ${type || "none"}`);
   const validRate = Number.isInteger(rate) && rate > 0;
   const validChannels = Number.isInteger(channels) && channels > 0 && channels <= 8;
   if (!validRate || !validChannels) throw new AudioConversionError(`Unusable PCM parameters: ${mediaType}`);

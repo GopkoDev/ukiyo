@@ -191,17 +191,37 @@ describe("audio routes", () => {
     expect((await t.app.request(`/api/audio/recordings/${rec.id}/file`)).status).toBe(200);
   });
 
-  it("resumes waiting for a pending cost after a restart", async () => {
-    const f = openRouter();
-    const app = configured(f).app;
-    const res = await app.request(
+  it("resumes waiting for a pending cost after a restart and settles it from the provider's lookup", async () => {
+    const queue: (() => void)[] = [];
+    const timers = { set: (fn: () => void) => queue.push(fn), clear: () => {} };
+    let found = false;
+    const lookups: string[] = [];
+    const base = openRouter();
+    const f = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/generation?id=")) {
+        lookups.push(url);
+        return found
+          ? Response.json(fixture("openrouter/speech/generation-found.json"))
+          : Response.json(fixture("openrouter/speech/generation-not-found.json"), { status: 404 });
+      }
+      return base(input, init);
+    }) as typeof fetch;
+    t = createTestApp({ openRouterApiKey: "sk-test" }, { fetch: f, timers });
+    const res = await t.app.request(
       "/api/audio/recordings",
       json("POST", { text: "Hi", model: "elevenlabs/eleven-v3", voice: "george" }),
     );
     const rec = Recording.parse(await res.json());
     expect(rec.costStatus).toBe("pending");
-    t?.restart(); // the pending row is picked up on boot (ADR-0043)
-    const pending = t?.db.prepare("SELECT cost_status FROM audio_generations WHERE id = ?").pluck().get(rec.id);
-    expect(pending).toBe("pending");
+    queue.length = 0; // the lookups scheduled before the restart are gone with the old app
+    t.restart(); // boot resume schedules the pending recording again (ADR-0043)
+    expect(queue.length).toBeGreaterThan(0);
+    found = true;
+    for (const fire of queue.splice(0)) fire();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(lookups.at(-1)).toContain("gen-tts-1");
+    const after = Recording.parse(await (await t.app.request(`/api/audio/recordings/${rec.id}`)).json());
+    expect(after).toMatchObject({ costStatus: "known", costMicros: 160 });
   });
 });

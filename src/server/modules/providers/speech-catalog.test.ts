@@ -44,7 +44,7 @@ describe("speech catalog", () => {
     expect(calls()).toBe(2);
   });
 
-  it("never caches a failure, finds a model, and reports an unknown provider", async () => {
+  it("never caches a failure and reports an unknown provider", async () => {
     let fail = true;
     const { p, calls } = provider(async () => {
       if (fail) throw new ProviderError("openrouter", 503, "down");
@@ -53,8 +53,7 @@ describe("speech catalog", () => {
     const catalog = createSpeechCatalog({ get: (id) => (id === "openrouter" ? p : undefined), list: () => [p] });
     await expect(catalog.models("openrouter")).rejects.toThrow("down");
     fail = false;
-    expect(await catalog.find("openrouter", "a")).toMatchObject({ id: "a" });
-    expect(await catalog.find("openrouter", "zzz")).toBeUndefined();
+    expect((await catalog.models("openrouter")).models.map((m) => m.id)).toEqual(["a"]);
     expect(calls()).toBe(2);
     await expect(catalog.models("nope")).rejects.toBeInstanceOf(ProviderError);
   });

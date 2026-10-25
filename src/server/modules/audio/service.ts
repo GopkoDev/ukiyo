@@ -187,18 +187,14 @@ export function createAudioService(deps: AudioServiceDeps) {
         createdAt: new Date(startedAt).toISOString(),
         durationMs,
       };
-      let staged = false;
       try {
         await deps.files.stageAudio(id, audio.bytes, audio.mediaType);
-        staged = true;
         deps.repo.insertAtomic(record, () => deps.files.commitAudioSync(record.filePath));
       } catch (err) {
-        // The staged copy is always this request's. A file already in place is dropped only when no row owns it
-        // (a failed COMMIT after the rename) — with a clashing id it belongs to the other recording.
-        if (staged) {
-          if (deps.repo.get(id)) deps.files.discardStagedAudio(record.filePath);
-          else deps.files.discardAudio(record.filePath);
-        }
+        // The staged copy (even a partly written one) is always this request's. A file already in place is
+        // dropped only when no row owns it (a failed COMMIT after the rename) — with a clashing id it is another's.
+        if (deps.repo.get(id)) deps.files.discardStagedAudio(record.filePath);
+        else deps.files.discardAudio(record.filePath);
         console.error(`audio: could not save ${id}`, err);
         throw new AppError("STORAGE_ERROR", SAVE_FAILED, 500);
       }

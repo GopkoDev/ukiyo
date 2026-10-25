@@ -312,4 +312,82 @@ describe("audio service — list, delete, file", () => {
     expect(file.path).toBe(join(t.dataDir, rec.filePath));
     expect((await appError(service.file("01NOSUCHRECORDING000000000"))).code).toBe("NOT_FOUND");
   });
+
+  it("keeps the recording and its file when the deletion fails, answers a storage error, and still awaits its cost", async () => {
+    t = createTestApp();
+    const fake = fakeProvider();
+    const speech = speechRegistryOf([fake.p]);
+    const repo = createRecordingsRepo(t.db);
+    const real = createFileStore(t.dataDir);
+    const files = {
+      ...real,
+      trashAudioSync: (path: string) => {
+        real.trashAudioSync(path);
+        throw new Error("rename failed half-way");
+      },
+    } as typeof real;
+    const forgotten: string[] = [];
+    const costSync = createCostSync({ repo, lookupFor: () => undefined });
+    const service = createAudioService({
+      speech,
+      catalog: createSpeechCatalog(speech),
+      repo,
+      files,
+      costSync: { ...costSync, forget: (id: string) => forgotten.push(id) } as typeof costSync,
+      timeoutMs: 1000,
+    });
+    const rec = seedRecording(t.db, t.dataDir);
+    const err = await appError(service.remove(rec.id));
+    expect(err).toMatchObject({ code: "STORAGE_ERROR", status: 500, message: "Couldn't delete this recording" });
+    expect(repo.get(rec.id)).toBeDefined();
+    expect(existsSync(join(t.dataDir, rec.filePath))).toBe(true);
+    expect(forgotten).toEqual([]);
+  });
+
+  it("stops waiting for a deleted recording's cost", async () => {
+    t = createTestApp();
+    const fake = fakeProvider();
+    const speech = speechRegistryOf([fake.p]);
+    const repo = createRecordingsRepo(t.db);
+    const forgotten: string[] = [];
+    const costSync = createCostSync({ repo, lookupFor: () => undefined });
+    const service = createAudioService({
+      speech,
+      catalog: createSpeechCatalog(speech),
+      repo,
+      files: createFileStore(t.dataDir),
+      costSync: { ...costSync, forget: (id: string) => forgotten.push(id) } as typeof costSync,
+      timeoutMs: 1000,
+    });
+    const rec = seedRecording(t.db, t.dataDir);
+    await service.remove(rec.id);
+    expect(forgotten).toEqual([rec.id]);
+  });
+
+  it("drops a partly written staged file when staging fails", async () => {
+    t = createTestApp();
+    const fake = fakeProvider();
+    const speech = speechRegistryOf([fake.p]);
+    const repo = createRecordingsRepo(t.db);
+    const real = createFileStore(t.dataDir);
+    const files = {
+      ...real,
+      stageAudio: async (id: string, bytes: Uint8Array, mediaType: string) => {
+        await real.stageAudio(id, bytes.slice(0, 2), mediaType); // half the bytes reached the disk
+        throw new Error("ENOSPC");
+      },
+    } as typeof real;
+    const service = createAudioService({
+      speech,
+      catalog: createSpeechCatalog(speech),
+      repo,
+      files,
+      costSync: createCostSync({ repo, lookupFor: () => undefined }),
+      timeoutMs: 1000,
+    });
+    const err = await appError(service.start({ text: "Hi", model: "elevenlabs/eleven-v3", voice: "george" }));
+    expect(err.code).toBe("STORAGE_ERROR");
+    expect(staged()).toEqual([]);
+    expect(repo.allIds()).toEqual([]);
+  });
 });
