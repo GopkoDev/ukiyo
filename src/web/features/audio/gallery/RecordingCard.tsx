@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import type { Recording } from "../../../../shared/speech";
 import { CostLabel } from "../CostLabel";
 import { voiceDot, voiceLabel } from "../VoiceSelect";
-import type { AudioGalleryView } from "./audioGalleryView";
+import type { AudioGalleryView, AudioListView } from "./audioGalleryView";
 import { useRecordingPendingCost } from "./queries";
 import { reuseRecording } from "./reuse";
 import { settingsLabels } from "./settingsLabels";
@@ -28,9 +28,12 @@ export const recordingPath = (id: string) => `/audio/recordings/${encodeURICompo
 export function RecordingCard({
   r,
   views = { grid: ALL, order: ALL },
+  gallery = "audio-gallery",
 }: {
   r: Recording;
-  views?: { grid: AudioGalleryView; order: AudioGalleryView };
+  views?: { grid: AudioGalleryView | AudioListView; order: AudioGalleryView | AudioListView };
+  /** Whose grid the card sits in: the dialog opens over it (voice-presets ADR-0059). */
+  gallery?: "audio-gallery" | "voices";
 }) {
   const [broken, setBroken] = useState(false);
   const labels = settingsLabels(r.settings);
@@ -42,7 +45,7 @@ export function RecordingCard({
           // A plain click opens the dialog over the grid; modified clicks keep the link's own behaviour.
           if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
           e.preventDefault();
-          navigate(recordingPath(r.id), mediaDialogState("audio-gallery", views));
+          navigate(recordingPath(r.id), mediaDialogState(gallery, views));
         }}
         className="flex flex-col gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >

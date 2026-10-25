@@ -1,8 +1,10 @@
-import { AudioLines, Boxes, Images, Library, type LucideIcon, Sparkles } from "lucide-react";
+import { AudioLines, Boxes, Images, Library, type LucideIcon, MicVocal, Sparkles } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { AudioGalleryPage } from "@/features/audio/gallery/AudioGallery";
 import { RecordingPage } from "@/features/audio/gallery/RecordingDetail";
 import { RecordingDialog } from "@/features/audio/gallery/RecordingDialog";
+import { VOICES_PATH } from "@/features/audio/presets/queries";
+import { VoicesPage } from "@/features/audio/presets/VoicesPage";
 import { SpeechPage } from "@/features/audio/SpeechPage";
 import { Gallery } from "@/features/gallery/Gallery";
 import { GalleryViews } from "@/features/gallery/GalleryViews";
@@ -12,7 +14,7 @@ import { GeneratePanel } from "@/features/generate/GeneratePanel";
 import { JobIndicator } from "@/features/generate/job";
 import { RecentGenerations } from "@/features/generate/RecentGenerations";
 import { MODELS_PATH, ModelsPage, modelsTab } from "@/features/models/ModelsPage";
-import type { DetailRouteName, Route } from "@/lib/router";
+import { type DetailRouteName, dialogGallery, type Route } from "@/lib/router";
 
 /** The blocks of the navigation bar, in order (CONTEXT: Section group; ADR-0046). */
 export const SECTION_GROUPS = [
@@ -118,7 +120,21 @@ export const SECTIONS: readonly Section[] = [
     accessibleName: "Audio gallery",
     icon: Library,
     page: AudioGalleryPage,
-    owns: (route) => route.name === "recording",
+    // Every recording address except a dialog opened from a preset page (voice-presets ADR-0059).
+    owns: (route) => route.name === "recording" && dialogGallery(route) !== "voices",
+    detail: { route: "recording", label: "Recording", Page: RecordingPage, Dialog: RecordingDialog },
+  },
+  {
+    id: "voices",
+    path: VOICES_PATH,
+    group: "audio",
+    label: "Voices",
+    icon: MicVocal,
+    page: VoicesPage,
+    // A preset's own page (ADR-0060) and the recording dialogs opened over its grid (ADR-0059).
+    owns: (route) =>
+      (route.name === "page" && /^\/audio\/voices\/[^/]+$/.test(trimSlash(route.pathname))) ||
+      (route.name === "recording" && dialogGallery(route) === "voices"),
     detail: { route: "recording", label: "Recording", Page: RecordingPage, Dialog: RecordingDialog },
   },
   {

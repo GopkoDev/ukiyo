@@ -17,8 +17,11 @@ export type Route = RouteBase & { state?: unknown };
 /** Random per module load: a reload or a new tab gets a new id, so a kept history state reads as a direct visit (ADR-0033). */
 export const APP_LOAD: string = Math.random().toString(36).slice(2) + Date.now().toString(36);
 
-/** The gallery whose grid opened the dialog, per detail route kind. */
-const DIALOG_OF: Record<DetailRouteName, string> = { detail: "gallery", recording: "audio-gallery" };
+/** The galleries whose grid may open the dialog, per detail route kind (a preset page opens recordings too, ADR-0059). */
+const DIALOG_OF: Record<DetailRouteName, readonly string[]> = {
+  detail: ["gallery"],
+  recording: ["audio-gallery", "voices"],
+};
 
 /** The history state the grid pushes when it opens a generation as a dialog over itself. */
 export function dialogState(views: { grid: GalleryView; order: GalleryView }) {
@@ -33,7 +36,12 @@ export function mediaDialogState<V>(gallery: string, views: { grid: V; order: V 
 /** A detail route reached from this load's own grid: show the grid with the dialog, not the full page. */
 export function isDialogVisit(route: Route): boolean {
   const s = route.state as { dialog?: unknown; load?: unknown } | null | undefined;
-  return isDetailRoute(route) && s?.dialog === DIALOG_OF[route.name] && s.load === APP_LOAD;
+  return isDetailRoute(route) && DIALOG_OF[route.name].includes(String(s?.dialog)) && s?.load === APP_LOAD;
+}
+
+/** The gallery whose grid opened this dialog visit; none on a direct visit (ADR-0059). */
+export function dialogGallery(route: Route): string | undefined {
+  return isDialogVisit(route) ? String((route.state as { dialog?: unknown }).dialog) : undefined;
 }
 
 const NAV_EVENT = "gen-img:navigate";

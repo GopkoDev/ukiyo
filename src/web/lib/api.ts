@@ -24,6 +24,12 @@ import {
   SpeechModelsResponse,
   type StartSpeechRequest,
 } from "../../shared/speech";
+import {
+  type CreatePresetRequest,
+  type UpdatePresetRequest,
+  VoicePreset,
+  VoicePresetsResponse,
+} from "../../shared/voice-presets";
 
 export class ApiError extends Error {
   constructor(
@@ -119,12 +125,19 @@ export const api = {
   deleteGeneration: (id: string) => request(z.null(), `/generations/${encodeURIComponent(id)}`, json("DELETE")),
   generation: (id: string) => request(Generation, `/generations/${encodeURIComponent(id)}`),
   speechModels: () => request(SpeechModelsResponse, "/audio/models"),
+  voicePresets: () => request(VoicePresetsResponse, "/audio/presets"),
+  voicePreset: (id: string) => request(VoicePreset, `/audio/presets/${encodeURIComponent(id)}`),
+  createVoicePreset: (body: CreatePresetRequest) => request(VoicePreset, "/audio/presets", json("POST", body)),
+  updateVoicePreset: (id: string, body: UpdatePresetRequest) =>
+    request(VoicePreset, `/audio/presets/${encodeURIComponent(id)}`, json("PATCH", body)),
+  deleteVoicePreset: (id: string) => request(z.null(), `/audio/presets/${encodeURIComponent(id)}`, json("DELETE")),
   /** One provider's remaining credit; `remainingUsd: null` when it couldn't be read (ADR-0055). */
   providerBalance: (providerId: string) =>
     request(BalanceResponse, `/providers/${encodeURIComponent(providerId)}/balance`),
-  recordings: (cursor?: string, limit?: number, filter?: { model: string }) => {
+  recordings: (cursor?: string, limit?: number, filter?: { model: string } | { preset: string }) => {
     const q = new URLSearchParams();
-    if (filter) q.set("model", filter.model);
+    if (filter && "model" in filter) q.set("model", filter.model);
+    if (filter && "preset" in filter) q.set("preset", filter.preset);
     if (cursor) q.set("cursor", cursor);
     if (limit !== undefined) q.set("limit", String(limit));
     const qs = q.toString();

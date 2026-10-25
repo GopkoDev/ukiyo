@@ -1,4 +1,4 @@
-import { isDialogVisit, navigate, useRoute } from "@/lib/router";
+import { dialogGallery, navigate, useRoute } from "@/lib/router";
 import { createNotice } from "../../media-gallery/notice";
 import { createScrollMemory } from "../../media-gallery/scrollMemory";
 import {
@@ -31,15 +31,28 @@ export function useAudioGalleryView(): AudioGalleryView {
   const route = useRoute();
   if (route.name === "page" && route.pathname.replace(/(.)\/$/, "$1") === AUDIO_GALLERY_PATH)
     lastView = parseAudioView(route.search);
-  else if (route.name === "recording" && isDialogVisit(route))
-    lastView = audioDialogViews(route.state).grid ?? lastView;
+  else if (route.name === "recording" && dialogGallery(route) === "audio-gallery") {
+    // Only the audio gallery's own dialogs set its view; a preset page's dialog never does (ADR-0059).
+    const grid = audioDialogViews(route.state).grid;
+    if (grid && grid.kind !== "preset") lastView = grid;
+  }
   return lastView;
 }
 
-/** The list a dialog steps through: the state's order; All when it names none or «By model» (no list). */
-export function useAudioOrderView(): { grid: AudioGalleryView; order: AudioListView } {
+/**
+ * The dialog's gallery (the audio gallery, or Voices for a preset page — ADR-0059), the grid behind it and the list it
+ * steps through: the state's order; All when it names none or «By model» (no list).
+ */
+export function useAudioOrderView(): {
+  gallery: "audio-gallery" | "voices";
+  grid: AudioGalleryView | AudioListView;
+  order: AudioListView;
+} {
   const route = useRoute();
-  const grid = useAudioGalleryView();
-  const order = audioDialogViews(route.state).order;
-  return { grid, order: !order || order.kind === "models" ? { kind: "all" } : order };
+  const galleryView = useAudioGalleryView();
+  const views = audioDialogViews(route.state);
+  const gallery = dialogGallery(route) === "voices" ? "voices" : "audio-gallery";
+  const grid = gallery === "voices" && views.grid ? views.grid : galleryView;
+  const order = views.order;
+  return { gallery, grid, order: !order || order.kind === "models" ? { kind: "all" } : order };
 }

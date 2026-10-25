@@ -74,7 +74,9 @@ beforeEach(() => {
   m.providerBalance.mockResolvedValue({ provider: "openrouter", remainingUsd: 1 });
   m.recordingModels.mockImplementation(async () => groups());
   m.recordings.mockImplementation(async (cursor, _limit, filter) => {
-    const all = stored.filter((r) => (!filter?.model || r.model === filter.model) && (!cursor || r.id < cursor));
+    const all = stored.filter(
+      (r) => (!filter || !("model" in filter) || r.model === filter.model) && (!cursor || r.id < cursor),
+    );
     const items = all.slice(0, pageSize);
     return { items, nextCursor: all.length > pageSize ? (items.at(-1)?.id ?? null) : null };
   });

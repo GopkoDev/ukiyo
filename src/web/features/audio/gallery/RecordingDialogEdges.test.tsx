@@ -49,7 +49,7 @@ beforeEach(() => {
   m.currentJob.mockResolvedValue({ job: null });
   m.recordingModels.mockImplementation(async () => groups());
   m.recordings.mockImplementation(async (_c, _l, filter) => ({
-    items: stored.filter((r) => !filter || r.model === filter.model),
+    items: stored.filter((r) => !filter || !("model" in filter) || r.model === filter.model),
     nextCursor: null,
   }));
   m.recording.mockImplementation(async (id) => {

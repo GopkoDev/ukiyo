@@ -72,8 +72,8 @@ export function App({ sections = SECTIONS }: { sections?: readonly Section[] }) 
   }, [current]);
 
   // A former address (alias) opens its section and the address bar shows the current one — no history entry (ADR-0046).
-  const aliased =
-    route.name === "page" && current !== undefined && pathPart(current.path) !== route.pathname.replace(/(.)\/$/, "$1");
+  // Only a declared former address redirects; a section may own sub-paths of its own (voice-presets ADR-0060).
+  const aliased = route.name === "page" && current?.aliases?.includes(route.pathname.replace(/(.)\/$/, "$1")) === true;
   useEffect(() => {
     if (aliased && current && route.name === "page") replace(pathPart(current.path) + route.search);
   }, [aliased, current, route]);

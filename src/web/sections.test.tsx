@@ -2,6 +2,7 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import { Boxes } from "lucide-react";
 import { useEffect } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { mediaDialogState } from "@/lib/router";
 import { renderWithQuery } from "@/test-utils";
 import { App } from "./App";
 import { SECTION_GROUPS, SECTIONS, type Section, sectionFor } from "./sections";
@@ -14,6 +15,7 @@ describe("sections registry", () => {
       ["models", "/models", "Models", "image"],
       ["speech", "/audio/speech", "Speech", "audio"],
       ["audio-gallery", "/audio/gallery", "Gallery", "audio"],
+      ["voices", "/audio/voices", "Voices", "audio"],
       ["audio-models", "/models?tab=audio", "Models", "audio"],
     ]);
     expect(SECTION_GROUPS.map((g) => [g.id, g.label])).toEqual([
@@ -41,6 +43,30 @@ describe("sections registry", () => {
     expect(sectionFor({ name: "page", pathname: "/speech/", search: "" })?.id).toBe("speech");
     expect(sectionFor({ name: "page", pathname: "/audio/speech", search: "" })?.id).toBe("speech");
     expect(sectionFor({ name: "page", pathname: "/audio", search: "" })).toBeUndefined();
+  });
+
+  it("lets Voices own its preset pages and the recording dialogs opened from them (voice-presets ADR-0059, ADR-0060)", () => {
+    const at = (pathname: string) => sectionFor({ name: "page", pathname, search: "" })?.id;
+    expect(at("/audio/voices")).toBe("voices");
+    expect(at("/audio/voices/01P00000000000000000000001")).toBe("voices");
+    expect(at("/audio/voices/01P00000000000000000000001/")).toBe("voices");
+    expect(at("/audio/voices/a/b")).toBeUndefined();
+    const recording = (state: unknown) => sectionFor({ name: "recording", id: "01R1", state })?.id;
+    expect(
+      recording(
+        mediaDialogState("voices", {
+          grid: { kind: "preset", presetId: "01P1" },
+          order: { kind: "preset", presetId: "01P1" },
+        }),
+      ),
+    ).toBe("voices");
+    expect(recording(mediaDialogState("audio-gallery", { grid: { kind: "all" }, order: { kind: "all" } }))).toBe(
+      "audio-gallery",
+    );
+    expect(recording(null)).toBe("audio-gallery");
+    // A reload (another app load) of a Voices dialog visit is a direct visit: the audio gallery's recording page.
+    expect(recording({ dialog: "voices", load: "an earlier load" })).toBe("audio-gallery");
+    expect(SECTIONS.find((s) => s.id === "voices")?.detail?.route).toBe("recording");
   });
 
   it("makes Models reachable at /models, not kept mounted", () => {
@@ -114,7 +140,7 @@ describe("sections registry", () => {
       within(audio)
         .getAllByRole("link")
         .map((l) => l.textContent),
-    ).toEqual(["Speech", "Gallery", "Models"]);
+    ).toEqual(["Speech", "Gallery", "Voices", "Models"]);
     expect(within(image).getByRole("link", { name: "Models" })).toHaveAttribute("aria-current", "page");
     expect(within(audio).getByRole("link", { name: "Speech" })).toHaveAttribute("href", "/audio/speech");
     window.history.replaceState(null, "", "/");
@@ -132,6 +158,21 @@ describe("sections registry", () => {
     expect(window.location.pathname).toBe("/audio/speech");
     expect(window.history.length).toBe(before);
     expect(screen.getByText("Speech stub")).toBeVisible();
+    window.history.replaceState(null, "", "/");
+    vi.unstubAllGlobals();
+  });
+
+  it("redirects only declared former addresses: /speech/ still does, a preset page keeps its address", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ status: "ok" })),
+    );
+    window.history.replaceState(null, "", "/speech/");
+    renderWithQuery(<App sections={[...SECTIONS.filter((s) => s.id !== "speech"), { ...speechStub }]} />);
+    expect(window.location.pathname).toBe("/audio/speech");
+    window.history.replaceState(null, "", "/audio/voices/01P00000000000000000000001");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    expect(window.location.pathname).toBe("/audio/voices/01P00000000000000000000001");
     window.history.replaceState(null, "", "/");
     vi.unstubAllGlobals();
   });

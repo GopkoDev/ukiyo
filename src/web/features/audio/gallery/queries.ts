@@ -17,7 +17,11 @@ export function audioListOptions(view: AudioListView) {
   return infiniteQueryOptions({
     queryKey: audioViewKey(view),
     queryFn: ({ pageParam }) =>
-      api.recordings(pageParam, AUDIO_PAGE_SIZE, view.kind === "model" ? { model: view.model } : undefined),
+      api.recordings(
+        pageParam,
+        AUDIO_PAGE_SIZE,
+        view.kind === "model" ? { model: view.model } : view.kind === "preset" ? { preset: view.presetId } : undefined,
+      ),
     initialPageParam: undefined as string | undefined,
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: Number.POSITIVE_INFINITY,

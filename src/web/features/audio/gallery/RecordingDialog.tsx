@@ -14,7 +14,7 @@ import { audioNotice, useAudioOrderView } from "./useAudioGalleryView";
 
 /** SCR-04 — one recording in a dialog over the audio grid, stepping through its loaded order (shared engine). */
 export function RecordingDialog({ id }: { id: string }) {
-  const { grid: behind, order } = useAudioOrderView();
+  const { gallery, grid: behind, order } = useAudioOrderView();
   const list = useInfiniteQuery(audioListOptions(order));
   const detail = useRecording(id);
   const qc = useQueryClient();
@@ -42,7 +42,7 @@ export function RecordingDialog({ id }: { id: string }) {
       id={id}
       noun="recording"
       list={list}
-      go={(to) => replace(recordingPath(to), mediaDialogState("audio-gallery", { grid: behind, order }))}
+      go={(to) => replace(recordingPath(to), mediaDialogState(gallery, { grid: behind, order }))}
       title={items.find((r) => r.id === id)?.text ?? detail.data?.text}
       cardAttr="data-recording-id"
       keepsScroll={behind.kind === "models"}

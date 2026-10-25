@@ -9,8 +9,8 @@ files_hint: ["src/web/lib/api.ts", "src/web/lib/router.tsx", "src/web/App.tsx", 
 owner: "dmytro.hopko"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T6 — Typed client, Voices section and routing (ADR-0059, ADR-0060)

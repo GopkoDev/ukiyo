@@ -91,7 +91,7 @@
         "src/web/features/audio/gallery/"
       ],
       "file": "docs/features/voice-presets/tasks/T6-client-voices-section-and-routing.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T7",
