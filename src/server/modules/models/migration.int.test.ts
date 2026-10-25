@@ -49,7 +49,7 @@ describe("migration 0015_create_speech_model_preferences", () => {
     expect(() => ins.run("openrouter", "a/b", 0, 0, "x")).toThrow();
     ins.run("openrouter", "google/gemini-2.5-flash-image", 0, 1, "x");
     expect(db.prepare("SELECT * FROM model_preferences").all()).toEqual([PREF]);
-    migrateDown(db);
+    while (appliedVersions(db).at(-1) !== "0014") migrateDown(db);
     expect(tables()).toEqual(["model_preferences"]);
     expect(db.prepare("SELECT * FROM model_preferences").all()).toEqual([PREF]);
   });

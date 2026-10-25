@@ -9,8 +9,8 @@ files_hint: ["docs/features/voice-presets/migrations/", "migrations/", "src/serv
 owner: "dmytro.hopko"
 estimate: "S"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T1 — Promote the voice-presets migration and test it
