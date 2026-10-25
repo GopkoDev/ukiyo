@@ -6,10 +6,7 @@
       "title": "Promote the audio curation migrations and test them on prototype-shaped data",
       "layer": "migration",
       "deps": [],
-      "acs": [
-        "AC-10",
-        "AC-11"
-      ],
+      "acs": ["AC-10", "AC-11"],
       "dod": "migration test passes: apply, cascade, rollback; existing step-18 migration tests still pass; `pnpm typecheck && pnpm lint && pnpm test` green",
       "files_hint": [
         "docs/features/audio-gallery/migrations/01_create_audio_curation.up.sql",
@@ -24,16 +21,8 @@
       "id": "T2",
       "title": "Add model filter, model groups, stored names and tag/comment statements to the recordings repo",
       "layer": "infra",
-      "deps": [
-        "T1"
-      ],
-      "acs": [
-        "AC-01",
-        "AC-07",
-        "AC-13",
-        "AC-14",
-        "AC-21"
-      ],
+      "deps": ["T1"],
+      "acs": ["AC-01", "AC-07", "AC-13", "AC-14", "AC-21"],
       "dod": "repo integration tests for every new method pass; no change to image repos; gate green",
       "files_hint": [
         "src/server/modules/audio/repo.ts",
@@ -47,21 +36,8 @@
       "id": "T3",
       "title": "Expose model filter, model groups and curation through the audio service, routes and shared schemas",
       "layer": "ports",
-      "deps": [
-        "T2"
-      ],
-      "acs": [
-        "AC-04",
-        "AC-06",
-        "AC-07",
-        "AC-08",
-        "AC-10",
-        "AC-13",
-        "AC-14",
-        "AC-15",
-        "AC-18",
-        "AC-19"
-      ],
+      "deps": ["T2"],
+      "acs": ["AC-04", "AC-06", "AC-07", "AC-08", "AC-10", "AC-13", "AC-14", "AC-15", "AC-18", "AC-19"],
       "dod": "route integration tests for every operation pass, answers parse with the shared schemas; Speech page tests still pass; gate green",
       "files_hint": [
         "src/shared/speech.ts",
@@ -80,20 +56,10 @@
       "id": "T4",
       "title": "Add the audio gallery's server timing tests",
       "layer": "tests",
-      "deps": [
-        "T3"
-      ],
-      "acs": [
-        "AC-01",
-        "AC-07",
-        "AC-11",
-        "AC-13",
-        "AC-14"
-      ],
+      "deps": ["T3"],
+      "acs": ["AC-01", "AC-07", "AC-11", "AC-13", "AC-14"],
       "dod": "nfr tests pass in the serial project; gate green",
-      "files_hint": [
-        "src/server/modules/audio/nfr.int.test.ts"
-      ],
+      "files_hint": ["src/server/modules/audio/nfr.int.test.ts"],
       "file": "docs/features/audio-gallery/tasks/T4-audio-gallery-server-nfr.md",
       "status": "todo"
     },
@@ -102,9 +68,7 @@
       "title": "Extract the media-neutral gallery primitives into a shared media-gallery layer",
       "layer": "ui",
       "deps": [],
-      "acs": [
-        "AC-20"
-      ],
+      "acs": ["AC-20"],
       "dod": "all existing `src/web/features/gallery/*.test.tsx` and `App*.test.tsx` pass without edits; gate green",
       "files_hint": [
         "src/web/features/media-gallery/",
@@ -120,15 +84,8 @@
       "id": "T6",
       "title": "Extract the dialog stepping engine and frame from the image dialog",
       "layer": "ui",
-      "deps": [
-        "T5"
-      ],
-      "acs": [
-        "AC-05",
-        "AC-09",
-        "AC-11",
-        "AC-20"
-      ],
+      "deps": ["T5"],
+      "acs": ["AC-05", "AC-09", "AC-11", "AC-20"],
       "dod": "`GenerationDialog.test.tsx`, `DialogViews.test.tsx`, `GenerationDialog.nfr.test.tsx`, `App.dialog.test.tsx` pass without edits; gate green",
       "files_hint": [
         "src/web/features/media-gallery/useDialogStepping.ts",
@@ -142,19 +99,10 @@
       "id": "T7",
       "title": "Extract the notes card from the image Notes",
       "layer": "ui",
-      "deps": [
-        "T5"
-      ],
-      "acs": [
-        "AC-07",
-        "AC-08",
-        "AC-20"
-      ],
+      "deps": ["T5"],
+      "acs": ["AC-07", "AC-08", "AC-20"],
       "dod": "`Notes.test.tsx` and dialog tests pass without edits; gate green",
-      "files_hint": [
-        "src/web/features/media-gallery/NotesCard.tsx",
-        "src/web/features/gallery/Notes.tsx"
-      ],
+      "files_hint": ["src/web/features/media-gallery/NotesCard.tsx", "src/web/features/gallery/Notes.tsx"],
       "file": "docs/features/audio-gallery/tasks/T7-extract-notes-card.md",
       "status": "todo"
     },
@@ -163,10 +111,7 @@
       "title": "Add the recording detail route and let sections own their detail renderers",
       "layer": "wiring",
       "deps": [],
-      "acs": [
-        "AC-06",
-        "AC-20"
-      ],
+      "acs": ["AC-06", "AC-20"],
       "dod": "router + sections unit tests pass; all App tests pass without edits; gate green",
       "files_hint": [
         "src/web/lib/router.tsx",
@@ -182,12 +127,8 @@
       "id": "T9",
       "title": "Coordinate playback app-wide so one recording plays at a time",
       "layer": "ui",
-      "deps": [
-        "T8"
-      ],
-      "acs": [
-        "AC-02"
-      ],
+      "deps": ["T8"],
+      "acs": ["AC-02"],
       "dod": "playback unit tests + Speech component tests pass; gate green",
       "files_hint": [
         "src/web/lib/playback.ts",
@@ -203,14 +144,8 @@
       "id": "T10",
       "title": "Add the audio gallery's API client, view parsing, query keys and cache patching",
       "layer": "ui",
-      "deps": [
-        "T3"
-      ],
-      "acs": [
-        "AC-04",
-        "AC-13",
-        "AC-18"
-      ],
+      "deps": ["T3"],
+      "acs": ["AC-04", "AC-13", "AC-18"],
       "dod": "unit tests pass; gate green",
       "files_hint": [
         "src/web/lib/api.ts",
@@ -227,20 +162,8 @@
       "id": "T11",
       "title": "Build the Audio → Gallery section: grid, recording card, model choice and states",
       "layer": "ui",
-      "deps": [
-        "T5",
-        "T8",
-        "T9",
-        "T10"
-      ],
-      "acs": [
-        "AC-01",
-        "AC-02",
-        "AC-03",
-        "AC-04",
-        "AC-13",
-        "AC-15"
-      ],
+      "deps": ["T5", "T8", "T9", "T10"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-04", "AC-13", "AC-15"],
       "dod": "component tests for every SCR-02 state pass; 0 audio fetches before play (preload none); gate green",
       "files_hint": [
         "src/web/features/audio/gallery/AudioGallery.tsx",
@@ -256,13 +179,8 @@
       "id": "T12",
       "title": "Build the audio «By model» overview",
       "layer": "ui",
-      "deps": [
-        "T11"
-      ],
-      "acs": [
-        "AC-14",
-        "AC-21"
-      ],
+      "deps": ["T11"],
+      "acs": ["AC-14", "AC-21"],
       "dod": "component tests pass; gate green",
       "files_hint": [
         "src/web/features/audio/gallery/AudioByModel.tsx",
@@ -275,20 +193,8 @@
       "id": "T13",
       "title": "Build the recording dialog and page with notes, details and delete",
       "layer": "ui",
-      "deps": [
-        "T6",
-        "T7",
-        "T11"
-      ],
-      "acs": [
-        "AC-05",
-        "AC-06",
-        "AC-07",
-        "AC-08",
-        "AC-09",
-        "AC-11",
-        "AC-12"
-      ],
+      "deps": ["T6", "T7", "T11"],
+      "acs": ["AC-05", "AC-06", "AC-07", "AC-08", "AC-09", "AC-11", "AC-12"],
       "dod": "component tests for SCR-04/05/06/07 states pass; gate green",
       "files_hint": [
         "src/web/features/audio/gallery/RecordingDialog.tsx",
@@ -304,14 +210,8 @@
       "id": "T14",
       "title": "Hand Reuse from the gallery to the Speech page",
       "layer": "ui",
-      "deps": [
-        "T10",
-        "T13"
-      ],
-      "acs": [
-        "AC-16",
-        "AC-17"
-      ],
+      "deps": ["T10", "T13"],
+      "acs": ["AC-16", "AC-17"],
       "dod": "SpeechPage tests (old + new) pass; gate green",
       "files_hint": [
         "src/web/features/audio/SpeechPage.tsx",
@@ -326,17 +226,8 @@
       "id": "T15",
       "title": "Prove cross-section coherence and the request budgets",
       "layer": "tests",
-      "deps": [
-        "T12",
-        "T13",
-        "T14"
-      ],
-      "acs": [
-        "AC-02",
-        "AC-18",
-        "AC-20",
-        "AC-21"
-      ],
+      "deps": ["T12", "T13", "T14"],
+      "acs": ["AC-02", "AC-18", "AC-20", "AC-21"],
       "dod": "tests pass; gate green",
       "files_hint": [
         "src/web/features/audio/gallery/CrossContext.test.tsx",
@@ -349,17 +240,10 @@
       "id": "T16",
       "title": "Register the new components and update the architecture map",
       "layer": "docs",
-      "deps": [
-        "T15"
-      ],
-      "acs": [
-        "AC-20"
-      ],
+      "deps": ["T15"],
+      "acs": ["AC-20"],
       "dod": "docs updated; gate green",
-      "files_hint": [
-        "docs/design-system.md",
-        "docs/architecture-map.md"
-      ],
+      "files_hint": ["docs/design-system.md", "docs/architecture-map.md"],
       "file": "docs/features/audio-gallery/tasks/T16-register-components-and-map.md",
       "status": "todo"
     }
