@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Coins, Loader2, SlidersHorizontal, Sparkles } from "lucide-react";
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -8,11 +8,13 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError, api } from "@/lib/api";
+import { replace, useRoute } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import type { Recording, SpeechModel } from "../../../shared/speech";
 import { limitText, ModelSelect } from "./ModelSelect";
 import { SPEECH_CREDITS_KEY as CREDITS_KEY, SPEECH_MODELS_KEY as MODELS_KEY, RECORDINGS_KEY } from "./queryKeys";
 import { RecentRecordings } from "./RecentRecordings";
+import { ReplaceTextDialog } from "./ReplaceTextDialog";
 import { SpeechResult } from "./SpeechResult";
 import { estimateText } from "./speechCost";
 import { type Draft, useSpeechDraft } from "./useSpeechDraft";
@@ -131,6 +133,50 @@ export function SpeechPage() {
     },
   });
 
+  // Reuse handed over from the audio gallery: `?reuse=<id>` on arrival, applied once the recording and the model
+  // list are known, never while a request is in flight (audio-gallery ADR-0053, AC-16/AC-17).
+  const route = useRoute();
+  const reuseMark = route.name === "page" ? new URLSearchParams(route.search).get("reuse") : null;
+  const [reuseId, setReuseId] = useState<string | null>(null);
+  const [reuseNote, setReuseNote] = useState<string | null>(null);
+  const [asking, setAsking] = useState<Recording | null>(null);
+  useEffect(() => {
+    if (!reuseMark) return;
+    setReuseNote(null);
+    if (inFlight.current) setReuseNote("Wait for the current recording to finish, then reuse.");
+    else setReuseId(reuseMark);
+    replace(window.location.pathname); // the mark is applied once
+  }, [reuseMark]);
+  const reuseRec = useQuery({
+    queryKey: ["recording", reuseId],
+    queryFn: () => api.recording(reuseId ?? ""),
+    enabled: reuseId !== null,
+    staleTime: Number.POSITIVE_INFINITY,
+    retry: false,
+  });
+  const applyReuse = (r: Recording) => {
+    draft.reuse(r);
+    setResult({ recording: r, fresh: false });
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the recording or the model list arrives
+  useEffect(() => {
+    if (reuseId === null) return;
+    if (reuseRec.isError) {
+      setReuseNote(
+        reuseRec.error instanceof ApiError && reuseRec.error.status === 404
+          ? "This recording no longer exists."
+          : "Couldn't load the recording to reuse.",
+      );
+      setReuseId(null);
+      return;
+    }
+    if (!reuseRec.data || !models.data) return; // wait (the models error shows its own Try again)
+    const r = reuseRec.data;
+    setReuseId(null);
+    if (draft.text.trim() && draft.text !== r.text) setAsking(r);
+    else applyReuse(r);
+  }, [reuseId, reuseRec.data, reuseRec.isError, models.data]);
+
   const unconfigured = notConfigured(credits.error);
   const model = draft.model;
   const canGenerate = !!model && draft.chars > 0 && !draft.tooLong && !unconfigured && !generate.isPending;
@@ -201,6 +247,16 @@ export function SpeechPage() {
         </Panel>
       )}
       {draft.notice && <p className="text-muted-foreground text-sm">{draft.notice}</p>}
+      {reuseId !== null && <p className="text-muted-foreground text-sm">Loading the recording…</p>}
+      {reuseNote && <p className="text-muted-foreground text-sm">{reuseNote}</p>}
+      <ReplaceTextDialog
+        open={asking !== null}
+        onKeep={() => setAsking(null)}
+        onReplace={() => {
+          if (asking) applyReuse(asking);
+          setAsking(null);
+        }}
+      />
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-6">
         <div className="space-y-4 lg:space-y-6">
           <Panel

@@ -9,8 +9,8 @@ files_hint: ["src/web/features/audio/SpeechPage.tsx", "src/web/features/audio/us
 owner: "agent (sdd:implement)"
 estimate: "M"
 context_budget: "S"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T14 — Hand Reuse from the gallery to the Speech page

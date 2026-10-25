@@ -220,7 +220,7 @@
         "src/web/features/audio/SpeechPage.test.tsx"
       ],
       "file": "docs/features/audio-gallery/tasks/T14-reuse-into-speech.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T15",

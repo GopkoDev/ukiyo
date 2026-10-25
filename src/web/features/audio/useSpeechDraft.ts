@@ -52,7 +52,8 @@ export function useSpeechDraft(models: SpeechModel[] | undefined) {
       setText(r.text);
       setChosenVoice(r.voice);
       setRaw(r.settings);
-      const offered = models?.some((m) => m.id === r.model);
+      // «No longer offered» only once the model list is known (audio-gallery AC-17); before that the id is kept.
+      const offered = models === undefined || models.some((m) => m.id === r.model);
       if (offered) {
         setModelId(r.model);
         setNotice(null);
