@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Comment, MAX_TAGS, Tag } from "./curation";
 import { type Control as ControlSpec, INSTRUCTIONS_MAX, type SpeechPrice } from "./speech-models";
 
 export const ControlKey = z.enum(["speed", "stability", "similarity", "style", "speakerBoost", "instructions"]);
@@ -92,11 +93,28 @@ export const Recording = z.object({
   durationMs: z.number().int().nonnegative().nullable(),
   /** Where the browser fetches the audio. */
   url: z.string(),
+  /** The Owner's tags, in the order added (audio-gallery, ADR-0051). */
+  tags: z.array(Tag).max(MAX_TAGS),
+  /** The Owner's one comment, or none. */
+  comment: Comment.nullable(),
 });
 export type Recording = z.infer<typeof Recording>;
 
 export const RecordingPage = z.object({ items: z.array(Recording), nextCursor: z.string().nullable() });
 export type RecordingPage = z.infer<typeof RecordingPage>;
+
+/** One speech model's recordings for the model choice and «By model» (audio-gallery, ADR-0051). */
+export const RecordingModelGroup = z.object({
+  provider: z.string(),
+  model: z.string(),
+  modelName: z.string(),
+  count: z.number().int().positive(),
+  latestId: z.string(),
+  items: z.array(Recording),
+});
+export type RecordingModelGroup = z.infer<typeof RecordingModelGroup>;
+export const RecordingModelGroupsResponse = z.object({ models: z.array(RecordingModelGroup) });
+export type RecordingModelGroupsResponse = z.infer<typeof RecordingModelGroupsResponse>;
 
 /** Billed characters: Unicode code points of the trimmed text, delivery tags included (spec AC-11). */
 export const billedChars = (text: string): number => [...text.trim()].length;

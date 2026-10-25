@@ -55,6 +55,8 @@ const recording = (over: Partial<Recording> = {}): Recording => ({
   estimateMicros: 880,
   durationMs: 900,
   url: "/api/audio/recordings/01N0000000000000000000000A/file",
+  tags: [],
+  comment: null,
   ...over,
 });
 

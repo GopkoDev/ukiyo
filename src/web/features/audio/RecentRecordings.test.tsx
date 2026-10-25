@@ -28,6 +28,8 @@ const rec = (i: number, over: Partial<Recording> = {}): Recording => ({
   estimateMicros: 2400,
   durationMs: 800,
   url: `/api/audio/recordings/01N${String(i).padStart(23, "0")}/file`,
+  tags: [],
+  comment: null,
   ...over,
 });
 

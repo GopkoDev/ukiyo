@@ -9,7 +9,7 @@ describe("audio domain", () => {
     expect(costFromResult(null, null)).toEqual({ costMicros: null, costStatus: "unavailable", costRef: null });
   });
 
-  it("names the model by its stored name, else the catalog's, else its id; points at the file route", () => {
+  it("names the model by its one display name, else the row's stored name, else its id; points at the file route", () => {
     const rec = {
       id: "01N0000000000000000000000A",
       provider: "openrouter",
@@ -33,7 +33,10 @@ describe("audio domain", () => {
       url: "/api/audio/recordings/01N0000000000000000000000A/file",
     });
     expect(toRecordingDto(rec, undefined).modelName).toBe("elevenlabs/eleven-v4");
-    expect(toRecordingDto({ ...rec, modelName: "Stored" }, "Catalog").modelName).toBe("Stored");
+    // The service resolves one display name per model (ADR-0052); the row's own name is only the fallback.
+    expect(toRecordingDto({ ...rec, modelName: "Stored" }, "Display").modelName).toBe("Display");
+    expect(toRecordingDto({ ...rec, modelName: "Stored" }, undefined).modelName).toBe("Stored");
+    expect(toRecordingDto(rec, undefined)).toMatchObject({ tags: [], comment: null });
     expect(toRecordingDto(rec, undefined)).not.toHaveProperty("filePath");
     expect(toRecordingDto(rec, undefined)).not.toHaveProperty("costRef");
   });

@@ -29,8 +29,14 @@ export function createSpeechCatalog(providers: SpeechRegistry, now: () => number
     return load;
   }
 
+  /** The last successful read, even past its TTL; never fetches (ADR-0052). */
+  function peek(providerId: string): Entry | undefined {
+    return cache.get(providerId);
+  }
+
   return {
     models,
+    peek,
   };
 }
 

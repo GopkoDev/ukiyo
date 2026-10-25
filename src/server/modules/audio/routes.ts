@@ -13,7 +13,15 @@ const PageQuery = z.object({
     .regex(/^[0-9A-Z]{1,26}$/)
     .optional(),
   limit: z.coerce.number().int().min(1).max(100).default(10),
+  model: z.string().min(1).max(100).optional(),
 });
+const GroupsQuery = z.object({ latest: z.coerce.number().int().min(0).max(24).default(0) });
+
+async function jsonBody(req: { json(): Promise<unknown> }): Promise<unknown> {
+  return req.json().catch(() => {
+    throw new AppError("VALIDATION_ERROR", "Request body must be JSON", 400);
+  });
+}
 
 const notFound = () => new AppError("NOT_FOUND", "Recording not found", 404);
 const fieldsOf = (issues: z.core.$ZodIssue[]) =>
@@ -32,6 +40,32 @@ export function registerAudioRoutes(app: Hono, deps: AudioRouteDeps) {
     if (!q.success)
       throw new AppError("VALIDATION_ERROR", "Invalid page request", 400, { fields: fieldsOf(q.error.issues) });
     return c.json(await service.list(q.data));
+  });
+
+  // Before `/audio/recordings/:id`, so «models» is never read as an id.
+  app.get("/audio/recordings/models", async (c) => {
+    const q = GroupsQuery.safeParse(c.req.query());
+    if (!q.success)
+      throw new AppError("VALIDATION_ERROR", "Invalid models query", 400, { fields: fieldsOf(q.error.issues) });
+    return c.json(await service.modelGroups(q.data.latest));
+  });
+
+  app.put("/audio/recordings/:id/comment", async (c) => {
+    const id = Id.safeParse(c.req.param("id"));
+    if (!id.success) throw notFound();
+    return c.json(service.setComment(id.data, await jsonBody(c.req)));
+  });
+
+  app.post("/audio/recordings/:id/tags", async (c) => {
+    const id = Id.safeParse(c.req.param("id"));
+    if (!id.success) throw notFound();
+    return c.json(service.addTag(id.data, await jsonBody(c.req)));
+  });
+
+  app.delete("/audio/recordings/:id/tags/:tag", (c) => {
+    const id = Id.safeParse(c.req.param("id"));
+    if (!id.success) throw notFound();
+    return c.json(service.removeTag(id.data, c.req.param("tag")));
   });
 
   app.post("/audio/recordings", async (c) => {

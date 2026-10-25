@@ -9,8 +9,8 @@ files_hint: ["src/shared/speech.ts", "src/server/modules/audio/service.ts", "src
 owner: "agent (sdd:implement)"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T3 — Expose model filter, model groups and curation through the audio service, routes and shared schemas

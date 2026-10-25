@@ -289,6 +289,12 @@ describe("audio service — list, delete, file", () => {
     const { service } = setup();
     seedRecording(t.db, t.dataDir, { modelName: null, model: "elevenlabs/eleven-v3" });
     seedRecording(t.db, t.dataDir, { modelName: null, model: "retired/model" });
+    // A read never waits on the catalog (audio-gallery ADR-0052): before any catalog read, the id shows.
+    expect((await service.list({ limit: 10 })).items.map((r) => r.modelName)).toEqual([
+      "retired/model",
+      "elevenlabs/eleven-v3",
+    ]);
+    await service.models(); // the Speech page reads the catalog; its names are kept
     const page = await service.list({ limit: 10 });
     expect(page.items.map((r) => r.modelName)).toEqual(["retired/model", "Eleven v3"]);
     expect(page.nextCursor).toBeNull();

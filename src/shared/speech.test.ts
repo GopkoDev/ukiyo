@@ -93,6 +93,8 @@ describe("contract schemas", () => {
       estimateMicros: 75,
       durationMs: 900,
       url: "/api/audio/recordings/01N0000000000000000000000A/file",
+      tags: ["intro"],
+      comment: { body: "keep", updatedAt: "2026-10-25T10:00:00.000Z" },
     };
     expect(Recording.parse(r)).toEqual(r);
     expect(Recording.safeParse({ ...r, mediaType: "audio/ogg" }).success).toBe(false);

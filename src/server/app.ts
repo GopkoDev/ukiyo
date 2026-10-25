@@ -104,6 +104,7 @@ export function createApp(deps: AppDeps, options: CreateAppOptions = {}) {
     now: deps.now,
   });
   registerAudioRoutes(api, { service: audio });
+  audio.warmCatalog(); // display names for prototype recordings, in the background (ADR-0052)
 
   // One sweep once both repos exist: interrupted image and audio deletions are restored, leftovers dropped (ADR-0042).
   files.sweep(new Set(repo.allIds()), new Set(recordings.allIds()));

@@ -1,5 +1,5 @@
 import type { CostStatus, Recording } from "../../../shared/speech";
-import type { RecordingRecord } from "./repo";
+import type { RecordingCuration, RecordingRecord } from "./repo";
 
 const toMicros = (usd: number) => Math.round(usd * 1_000_000);
 
@@ -17,14 +17,23 @@ export function costFromResult(
 
 export const recordingFileUrl = (id: string) => `/api/audio/recordings/${encodeURIComponent(id)}/file`;
 
-/** The browser's view of a recording: no file path, no provider reference. Name: stored → catalog → id (AC-15). */
-export function toRecordingDto(r: RecordingRecord, catalogName: string | undefined): Recording {
+const NO_CURATION: RecordingCuration = { tags: [], comment: null };
+
+/**
+ * The browser's view of a recording: no file path, no provider reference. `modelName` is the model's one display
+ * name (stored → last catalog read → id, ADR-0052); a fresh recording passes its own.
+ */
+export function toRecordingDto(
+  r: RecordingRecord,
+  displayName: string | undefined,
+  curation: RecordingCuration = NO_CURATION,
+): Recording {
   return {
     id: r.id,
     createdAt: r.createdAt,
     provider: r.provider,
     model: r.model,
-    modelName: r.modelName ?? catalogName ?? r.model,
+    modelName: displayName ?? r.modelName ?? r.model,
     voice: r.voice,
     text: r.text,
     settings: r.settings,
@@ -35,6 +44,8 @@ export function toRecordingDto(r: RecordingRecord, catalogName: string | undefin
     estimateMicros: r.estimateMicros,
     durationMs: r.durationMs,
     url: recordingFileUrl(r.id),
+    tags: curation.tags,
+    comment: curation.comment,
   };
 }
 

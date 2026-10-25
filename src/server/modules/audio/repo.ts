@@ -109,6 +109,7 @@ export function createRecordingsRepo(db: Db) {
   const tagsOfId = (id: string) => selectTags.all(id) as string[];
   const deleteStmt = db.prepare("DELETE FROM audio_generations WHERE id = ?");
   const selectIds = db.prepare("SELECT id FROM audio_generations").pluck();
+  const anyUnnamed = db.prepare("SELECT 1 FROM audio_generations WHERE model_name IS NULL LIMIT 1").pluck();
   const selectPending = db.prepare(
     "SELECT id, provider, cost_ref, created_at, duration_ms FROM audio_generations WHERE cost_status = 'pending'",
   );
@@ -244,6 +245,11 @@ export function createRecordingsRepo(db: Db) {
       if (!exists.get(id)) return { status: "missing" };
       deleteTag.run(id, tag);
       return { status: "ok", tags: tagsOfId(id) };
+    },
+
+    /** True when some recording has no stored model name (prototype rows). */
+    hasUnnamed(): boolean {
+      return anyUnnamed.get() !== undefined;
     },
 
     allIds(): string[] {

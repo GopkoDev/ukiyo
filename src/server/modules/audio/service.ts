@@ -1,9 +1,18 @@
 import type { z } from "zod";
 import {
+  AddTagRequest,
+  type CommentResponse,
+  checkComment,
+  normalizeTag,
+  SetCommentRequest,
+  type TagsResponse,
+} from "../../../shared/curation";
+import {
   billedChars,
   type CreditsResponse,
   estimateMicros,
   type Recording,
+  type RecordingModelGroupsResponse,
   type RecordingPage,
   type SpeechModel,
   type SpeechModelsResponse,
@@ -70,14 +79,28 @@ export function createAudioService(deps: AudioServiceDeps) {
     }
   }
 
-  /** Catalog names for display; the catalog being unreachable never breaks a listing (AC-15). */
-  async function namesById(): Promise<Map<string, string>> {
-    try {
-      return new Map((await deps.catalog.models(SPEECH_PROVIDER)).models.map((m) => [m.id, m.name]));
-    } catch {
-      return new Map();
-    }
+  /**
+   * One display name per model id: the name stored with its newest recording that has one, else the last catalog
+   * read, else the id. Pure SQL plus an in-memory lookup — a read never waits on the provider (ADR-0052).
+   */
+  function displayNames(models: readonly string[]): Map<string, string> {
+    const stored = deps.repo.storedNames(models);
+    const cached = deps.catalog.peek(SPEECH_PROVIDER)?.models;
+    const names = new Map<string, string>();
+    for (const m of new Set(models)) names.set(m, stored.get(m) ?? cached?.find((c) => c.id === m)?.name ?? m);
+    return names;
   }
+
+  /** Recordings as the browser sees them: one name per model, their tags and comment (ADR-0051). */
+  function toDtos(records: readonly RecordingRecord[]): Recording[] {
+    const names = displayNames(records.map((r) => r.model));
+    const curation = deps.repo.curationOf(records.map((r) => r.id));
+    return records.map((r) => toRecordingDto(r, names.get(r.model), curation.get(r.id)));
+  }
+
+  const invalid = (field: string, message: string) =>
+    new AppError("VALIDATION_ERROR", message, 400, { fields: { [field]: message } });
+  const gone = () => new AppError("NOT_FOUND", "Recording not found", 404);
 
   function checkVoice(model: SpeechModel, voice: string | null): void {
     if (voice === null && model.voiceMode === "required")
@@ -208,16 +231,69 @@ export function createAudioService(deps: AudioServiceDeps) {
       return toRecordingDto(record, model.name);
     },
 
-    async list(q: { cursor?: string; limit: number }): Promise<RecordingPage> {
+    /** Newest first, all or one exact model id (audio-gallery AC-13). */
+    async list(q: { cursor?: string; limit: number; model?: string }): Promise<RecordingPage> {
       const page = deps.repo.list(q);
-      const names = page.items.some((r) => r.modelName === null) ? await namesById() : new Map<string, string>();
-      return { items: page.items.map((r) => toRecordingDto(r, names.get(r.model))), nextCursor: page.nextCursor };
+      return { items: toDtos(page.items), nextCursor: page.nextCursor };
     },
 
     async get(id: string): Promise<Recording> {
       const rec = deps.repo.get(id);
-      if (!rec) throw new AppError("NOT_FOUND", "Recording not found", 404);
-      return toRecordingDto(rec, rec.modelName ? undefined : (await namesById()).get(rec.model));
+      if (!rec) throw gone();
+      return toDtos([rec])[0] as Recording;
+    },
+
+    /** Every model with recordings, newest model first, with its count and latest `latest` recordings (AC-14). */
+    async modelGroups(latest: number): Promise<RecordingModelGroupsResponse> {
+      const groups = deps.repo.modelGroups({ latest });
+      const names = displayNames(groups.map((g) => g.model));
+      const items = toDtos(groups.flatMap((g) => g.items));
+      return {
+        models: groups.map((g) => ({
+          provider: g.provider,
+          model: g.model,
+          modelName: names.get(g.model) ?? g.model,
+          count: g.count,
+          latestId: g.latestId,
+          items: items.filter((r) => r.model === g.model),
+        })),
+      };
+    },
+
+    /** Replaces the comment; blank removes it (shared rules, audio-gallery AC-07/AC-08). */
+    setComment(id: string, body: unknown): CommentResponse {
+      const parsed = SetCommentRequest.safeParse(body);
+      if (!parsed.success) throw invalid("body", "Comment must be text");
+      const checked = checkComment(parsed.data.body);
+      if (!checked.ok) throw invalid("body", checked.message);
+      const res = deps.repo.setComment(id, checked.body, new Date(now()).toISOString());
+      if (res.status === "missing") throw gone();
+      return { comment: res.comment };
+    },
+
+    /** Adds one normalized tag; a duplicate leaves the list unchanged; at most 10. */
+    addTag(id: string, body: unknown): TagsResponse {
+      const parsed = AddTagRequest.safeParse(body);
+      if (!parsed.success) throw invalid("tag", parsed.error.issues[0]?.message ?? "Tag must be text");
+      const normalized = normalizeTag(parsed.data.tag);
+      if (!normalized.ok) throw invalid("tag", normalized.message);
+      const res = deps.repo.addTag(id, normalized.tag);
+      if (res.status === "missing") throw gone();
+      if (res.status === "limit") throw invalid("tag", "A recording can have at most 10 tags");
+      return { tags: res.tags };
+    },
+
+    removeTag(id: string, raw: string): TagsResponse {
+      const normalized = normalizeTag(raw);
+      const res = deps.repo.removeTag(id, normalized.ok ? normalized.tag : raw);
+      if (res.status === "missing") throw gone();
+      return { tags: res.tags };
+    },
+
+    /** Reads the catalog once in the background when some recording has no stored name (ADR-0052). Never throws. */
+    warmCatalog(): void {
+      if (!deps.repo.hasUnnamed()) return;
+      deps.catalog.models(SPEECH_PROVIDER).catch(() => {});
     },
 
     /** Deletes the recording and its file together (AC-16): the file moves to trash as the transaction's last step. */

@@ -50,7 +50,7 @@
         "src/web/features/audio/"
       ],
       "file": "docs/features/audio-gallery/tasks/T3-audio-service-routes-and-shared-schemas.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T4",
