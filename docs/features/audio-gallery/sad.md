@@ -157,7 +157,262 @@ sequenceDiagram
     Audio-->>Web: next page
 ```
 
-Further flows (dialog stepping, curation, deletion, model views, reuse, pending cost, boot backfill) are added to this section by `sequences`.
+### Flow 2: open a recording, step, direct visit (spec AC-05, AC-06, AC-09; SCR-02 → SCR-04 / SCR-05)
+
+```mermaid
+sequenceDiagram
+    actor Owner as <user>
+    participant UI as <ui>
+    participant Svc as <service>
+    participant DB as <data-store>
+    Note over UI: precondition - grid pages loaded, order known
+    Owner->>UI: clicks a card
+    UI->>UI: pauses any playing card, address names the recording
+    alt recording already read this session
+        UI-->>Owner: dialog from cache
+    else not read yet
+        UI->>Svc: read one recording
+        Svc->>DB: row with tags and comment
+        DB-->>Svc: row or nothing
+        Svc-->>UI: recording or not found
+        UI-->>Owner: dialog, or This recording no longer exists
+    end
+    Owner->>UI: steps Older
+    alt unsaved comment, typed tag or open confirmation
+        UI-->>Owner: stepping unavailable, Save or cancel your changes first
+    else neighbour loaded
+        UI-->>Owner: neighbour shown, old player stopped
+    else last loaded card
+        UI->>Svc: next page after the cursor of this view
+        alt page read
+            Svc-->>UI: next page
+            UI-->>Owner: next recording shown
+        else page failed
+            UI-->>Owner: Couldn't load the next one, Try again
+        end
+    end
+    Owner->>UI: opens the address directly
+    UI->>Svc: read one recording
+    alt found
+        Svc-->>UI: recording
+        UI-->>Owner: full page, way back to All
+    else unknown or read failed
+        UI-->>Owner: no longer exists, or Couldn't load this recording with Try again
+    end
+```
+
+The Owner clicks a card; any playing card pauses and the dialog opens over the grid, reading the recording only if it wasn't read this session. Stepping is blocked while something is unsaved; a loaded neighbour shows at once; past the last loaded card the next page of the same view is read first, and a failure keeps the current recording with Try again. A direct visit reads the recording and shows the full page, or says it no longer exists or couldn't be loaded.
+
+### Flow 3: tag and comment a recording (spec AC-07, AC-08, AC-10; SCR-06)
+
+```mermaid
+sequenceDiagram
+    actor Owner as <user>
+    participant UI as <ui>
+    participant Svc as <service>
+    participant DB as <data-store>
+    Owner->>UI: types a tag and presses Enter
+    UI->>UI: checks the shared tag rule
+    alt rule broken
+        UI-->>Owner: field says why, text kept
+    else rule passes
+        UI->>Svc: add tag to recording
+        Svc->>Svc: normalizes with the shared rule
+        Svc->>DB: recording exists, tag count, duplicate check, insert at next position
+        Note over Svc,DB: persists recording tag in one transaction, recording tags only
+        alt recording gone
+            Svc-->>UI: not found
+            UI-->>Owner: This recording no longer exists
+        else ten tags already
+            Svc-->>UI: refused with reason
+            UI-->>Owner: field says why
+        else added or duplicate
+            Svc-->>UI: tags in insertion order
+            UI->>UI: patches the card in every audio view, refreshes the detail only
+            UI-->>Owner: tag shown on recording and cards
+        end
+    end
+    Owner->>UI: saves a comment
+    alt over 2000 characters
+        UI-->>Owner: editor says why
+    else empty
+        UI->>Svc: set comment to nothing
+        Svc->>DB: deletes the recording comment
+        Svc-->>UI: no comment
+    else text
+        UI->>Svc: set comment
+        Svc->>DB: upserts the recording comment
+        Note over Svc,DB: persists recording comment with its update time
+        Svc-->>UI: comment
+        UI-->>Owner: comment shown, card gets the marker
+    end
+```
+
+A tag is checked in the page first, then normalized and stored by the server inside one transaction that refuses an eleventh tag and ignores a duplicate; a recording deleted meanwhile is reported as gone. The answer patches the card in every audio view without re-reading pages. A comment save stores, replaces or removes the one comment. Recording tags and comments sit in their own store, apart from image ones (AC-10).
+
+### Flow 4: delete a recording (spec AC-11, AC-12, AC-18; SCR-07)
+
+```mermaid
+sequenceDiagram
+    actor Owner as <user>
+    participant UI as <ui>
+    participant Svc as <service>
+    participant DB as <data-store>
+    participant FS as <file-store>
+    Owner->>UI: confirms Delete
+    UI->>Svc: delete recording
+    Svc->>DB: begin, delete row, tags and comment cascade
+    Svc->>FS: move audio file to trash as the last step
+    alt file move fails
+        DB-->>Svc: rolled back
+        Svc-->>UI: deletion failed
+        UI-->>Owner: Couldn't delete this recording, nothing changed
+    else unknown recording
+        Svc-->>UI: not found
+        UI-->>Owner: This recording no longer exists
+    else committed
+        Note over Svc,DB: removes recording, tags, comment
+        Svc->>Svc: stops waiting for its cost
+        Svc->>FS: purges the trashed file
+        Svc-->>UI: done
+        UI->>UI: removes the card from every audio view and the Speech lists
+        alt in the dialog with a neighbour in the order before deletion
+            UI-->>Owner: neighbour shown, Recording deleted.
+        else no neighbour or next page failed
+            UI-->>Owner: closes onto the view with Recording deleted.
+        else on the page
+            UI-->>Owner: gallery with Recording deleted.
+        end
+        UI->>Svc: views on screen and the recent list re-read
+    end
+```
+
+Deletion is one transaction whose last step moves the file to trash; the tags and comment go with the row. A failure rolls back and the recording stays complete. After success the cost watch stops, the file is purged, and the page removes the card everywhere, including the Speech page's recent list and latest result, then moves to the neighbour or closes with the notice.
+
+### Flow 5: model choice and «By model» (spec AC-13, AC-14, AC-15, AC-21)
+
+```mermaid
+sequenceDiagram
+    actor Owner as <user>
+    participant UI as <ui>
+    participant Svc as <service>
+    participant DB as <data-store>
+    participant Cat as <catalog-cache>
+    Owner->>UI: opens the model choice or By model
+    UI->>Svc: model groups with the four latest each
+    Svc->>DB: count and newest id per model id, ordered by newest
+    Svc->>DB: four latest recordings per model with tags and comment
+    Svc->>DB: newest stored name per model
+    Svc->>Cat: last catalog names, never fetch
+    Svc-->>UI: groups with one display name each
+    alt read failed
+        UI-->>Owner: Couldn't load, Try again
+    else groups
+        UI-->>Owner: list with counts, or sections with Show all N
+    end
+    Owner->>UI: chooses one model
+    UI->>Svc: page of that model id, newest first
+    Svc->>DB: page by model id after the cursor
+    alt no recordings with that model
+        Svc-->>UI: empty page
+        UI-->>Owner: No recordings with model, Show all recordings
+    else page
+        Svc-->>UI: page plus next cursor
+        UI-->>Owner: grid with heading and count
+    end
+```
+
+The model choice and «By model» share one read: per model id its count, newest id, four latest cards and one display name (stored name, else the last catalog read, else the id) — the catalog is never fetched on this path. Choosing a model reads that model's pages by exact id; an empty answer gives «No recordings with <model>».
+
+### Flow 6: Reuse into the Speech page (spec AC-16, AC-17; SCR-08)
+
+```mermaid
+sequenceDiagram
+    actor Owner as <user>
+    participant UI as <ui>
+    participant Speech as <ui-speech>
+    participant Svc as <service>
+    Owner->>UI: chooses Reuse on a card, dialog or page
+    UI->>Speech: opens the Speech page with the recording to reuse
+    Speech->>Svc: read the recording, cached when possible
+    Speech->>Svc: speech model list, if not loaded
+    alt model list failed
+        Speech-->>Owner: models couldn't load, Try again, form unchanged
+    else recording gone
+        Speech-->>Owner: This recording no longer exists, form unchanged
+    else request in flight
+        Speech-->>Owner: wait for the current request, form unchanged
+    else unsent text differs
+        Speech-->>Owner: Replace your text?
+        alt Keep mine
+            Speech-->>Owner: form and latest result unchanged
+        else Replace
+            Speech-->>Owner: form filled, recording is the latest result
+        end
+    else
+        Speech-->>Owner: form filled, retired model kept with notice when needed
+    end
+    Speech->>Speech: drops the reuse mark from the address
+```
+
+Reuse opens the Speech page with the recording named in its address (the dialog and page replace their history entry, so Back returns to the gallery). The Speech page loads the recording and its model list, then applies the reuse through its existing path: wait while a request is in flight, ask before replacing differing unsent text, keep the current model for a retired one. Failures change nothing.
+
+### Flow 7: a pending cost settles on cards (spec AC-04)
+
+```mermaid
+sequenceDiagram
+    participant UI as <ui>
+    participant Svc as <service>
+    participant DB as <data-store>
+    participant Ext as <external-system>
+    Note over Svc,Ext: the existing cost resolver asks the provider with bounded backoff
+    Svc->>Ext: look up the actual charge
+    Ext-->>Svc: amount or nothing
+    Svc->>DB: resolves pending to known or unavailable
+    Note over Svc,DB: persists cost status, only while still pending
+    loop every 10 s while a shown card is pending
+        UI->>Svc: read that one recording
+        Svc-->>UI: recording
+    end
+    UI->>UI: patches the card in every audio view, the dialog and the Speech lists
+```
+
+The server's existing resolver settles the cost; each pending card on screen reads only its own recording every 10 seconds and, once settled, the result is patched into every view — no page re-reads.
+
+### Cross-cutting: playback (spec AC-02, AC-09)
+
+```mermaid
+sequenceDiagram
+    actor Owner as <user>
+    participant UI as <ui>
+    participant Play as <playback-coordinator>
+    Owner->>UI: plays a recording
+    UI->>Play: a player started
+    Play->>UI: pauses every other player in the tab
+    Owner->>UI: moves to another section or opens a dialog
+    UI->>Play: route changed
+    Play->>UI: pauses everything playing
+    Note over UI,Play: the Speech page autoplays a fresh result only while it is shown
+```
+
+Starting any player pauses all others in the tab; every route change (another section, a dialog opening, a step) pauses what was playing; Speech autoplays only while it's the shown section.
+
+### AC coverage
+
+| AC | Shown by |
+|---|---|
+| AC-01, AC-03 | Flow 1 (paging), error states are UI-only branches of Flow 1 |
+| AC-02 | Cross-cutting: playback |
+| AC-04 | Flow 7 |
+| AC-05, AC-06, AC-09 | Flow 2 |
+| AC-07, AC-08, AC-10 | Flow 3 |
+| AC-11, AC-12, AC-18 | Flow 4 (AC-18 new recordings: invalidation after a save, step-18 flow) |
+| AC-13, AC-14, AC-15, AC-21 | Flow 5 |
+| AC-16, AC-17 | Flow 6 |
+| AC-19 | N/A runtime: the existing request guard refuses foreign-site requests before any route (ADR-0007) |
+| AC-20 | N/A runtime: regression guard, verified by the unchanged image suites |
+
+Flags for design: participants `<file-store>`, `<catalog-cache>`, `<ui-speech>` and `<playback-coordinator>` are the §5 File store, speech catalog `peek`, Speech page and `lib/playback.ts`; no new ADR needed.
 
 ## 7. Deployment view
 
