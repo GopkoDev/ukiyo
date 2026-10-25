@@ -187,7 +187,7 @@
         "src/web/features/audio/gallery/AudioByModel.test.tsx"
       ],
       "file": "docs/features/audio-gallery/tasks/T12-audio-gallery-by-model.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T13",

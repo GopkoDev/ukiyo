@@ -9,8 +9,8 @@ files_hint: ["src/web/features/audio/gallery/AudioByModel.tsx", "src/web/feature
 owner: "agent (sdd:implement)"
 estimate: "S"
 context_budget: "S"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T12 — Build the audio «By model» overview
