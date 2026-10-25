@@ -9,8 +9,8 @@ files_hint: ["docs/architecture-map.md", "docs/design-system.md", "docs/features
 owner: "dmytro.hopko"
 estimate: "S"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T9 — Architecture map and design-system inventory

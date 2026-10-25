@@ -10,4 +10,4 @@
 | T6 | Typed client, Voices section and routing (ADR-0059, ADR-0060) | done | COMMIT |
 | T7 | Speech page preset row: save, apply, modified, detach, rename, delete | done | COMMIT |
 | T8 | Voices list, preset page and the recording's preset row | done | COMMIT |
-| T9 | Architecture map and design-system inventory | todo | |
+| T9 | Architecture map and design-system inventory | done | COMMIT |

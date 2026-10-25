@@ -134,7 +134,7 @@
       "dod": "architecture-map (audio module presets, migrations 0001–0016, sections incl. Voices, ADR-0057…0060) and design-system inventory (PresetSelect, dialogs, PresetCard, VoicesPage, PresetPage) updated; tasks marked done",
       "files_hint": ["docs/architecture-map.md", "docs/design-system.md", "docs/features/voice-presets/tasks/"],
       "file": "docs/features/voice-presets/tasks/T9-docs-architecture-map-and-design-system-inventory.md",
-      "status": "todo"
+      "status": "done"
     }
   ]
 }

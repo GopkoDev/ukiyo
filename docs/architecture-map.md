@@ -2,7 +2,7 @@
 status: current
 mode: current   # current (brownfield scan) | greenfield-bootstrap (target foundation)
 updated_at: "2026-10-25"
-reflects_commit: "04b92f9"
+reflects_commit: "7006361"
 # machine-readable keys — implement's command-detection cascade reads test_cmd/lint_cmd right after the settings override.
 language: "typescript 5 / node 26"
 build_cmd: "pnpm build"
@@ -76,7 +76,7 @@ C4Container
 | generations | `src/server/modules/generations/` | domain / service / repo / routes + `jobs.ts` (single-slot job) + `cost-sync.ts` + `promptKey.ts` | `src/server/app.ts:62-78` | start (async job, polled), list (cursor, by model, by prompt), prompt groups, get, re-run/reuse lineage, comment, tag, delete; background cost resolver (`pending → known/unavailable`) | built (steps 2–6, 11–14) |
 | models | `src/server/modules/models/` | repo / routes | `src/server/app.ts:60` | per-model preferences (favorite, hidden) per provider + model id; image and speech kept in separate tables behind one `kind`-aware read/write (ADR-0054) | built (steps 9–10, 20) |
 | storage | `src/server/modules/storage/` | infra (`file-store.ts`) | injected into the generations and audio services | staged image dirs `.staging/<id>/` → `generations/<id>/` and audio files `.staging/audio-<id>.<ext>` → `audio/<id>.<ext>` by one synchronous rename inside the DB transaction; trash/restore/purge on delete; one boot sweep for both (ADR-0042) | built |
-| audio | `src/server/modules/audio/` | routes / service / domain / repo + `wav.ts` | `src/server/app.ts` (`createApp`) | text-to-speech recordings: validate against the speech model, speak through the speech port, wrap raw PCM as WAV, save file + row atomically (file store), cost `pending → known/unavailable` via a second cost-sync instance, list (cursor, one model), model groups, tags + one comment (own tables), delete atomically (cascade), serve files; display names stored → last catalog read (`peek`) → id, never waiting on the provider (ADR-0052) | built (steps 18–19) |
+| audio | `src/server/modules/audio/` | routes / service / domain / repo + `wav.ts` | `src/server/app.ts` (`createApp`) | text-to-speech recordings: validate against the speech model, speak through the speech port, wrap raw PCM as WAV, save file + row atomically (file store), cost `pending → known/unavailable` via a second cost-sync instance, list (cursor, one model), model groups, tags + one comment (own tables), delete atomically (cascade), serve files; display names stored → last catalog read (`peek`) → id, never waiting on the provider (ADR-0052); voice presets (`presets-repo.ts`, `presets-service.ts`): named speaker setups with stats computed on read, a recording linked only when the server finds its setup equal to the preset (ADR-0058), links in their own cascading table (ADR-0057) | built (steps 18–19, 21) |
 | db | `src/server/db/` | infra (`client.ts`, `migrate.ts`) | `src/server/index.ts:10` | open SQLite (WAL); apply pending migrations on every boot | built |
 | lib | `src/server/lib/` | shared (`errors.ts`, `ids.ts`, `config.ts`, `request-guard.ts`) | imported | `AppError` + envelope, ULIDs, env via zod, Host/Origin/fetch-metadata guard (ADR-0007) | built |
 | shared | `src/shared/` | contracts | server + web | zod DTOs: `generations`, `providers`, `models`, `pricing`, `curation`, `rerun`, `model-groups`, `errors`, `health`, `image-sniff`, `speech` (recordings) + `speech-models` (family spec map, ADR-0040) | built |
@@ -130,7 +130,7 @@ C4Container
 
 | Store | Engine | Accessed via | Notes |
 |---|---|---|---|
-| Metadata DB | SQLite (`<data dir>/gen-img.db`, WAL) | `*/repo.ts` (better-sqlite3) | migrations 0001–0015 (0015 `speech_model_preferences`; 0013 `audio_generation_tags` / `audio_generation_comments`, cascading; 0014 `audio_generations_by_model`): `generations` (+ cost_ref, source lineage, prompt_key), `generation_images`, `generation_inputs`, `generation_comments`, `generation_tags`, `model_preferences`, `speech_model_preferences`, `audio_generations` (rebuilt by 0012: provider, model_name, nullable voice, `cost_status`, `estimate_micros`, `duration_ms`) |
+| Metadata DB | SQLite (`<data dir>/gen-img.db`, WAL) | `*/repo.ts` (better-sqlite3) | migrations 0001–0016 (0016 `voice_presets` + `voice_preset_recordings`, cascading from both; 0015 `speech_model_preferences`; 0013 `audio_generation_tags` / `audio_generation_comments`, cascading; 0014 `audio_generations_by_model`): `generations` (+ cost_ref, source lineage, prompt_key), `generation_images`, `generation_inputs`, `generation_comments`, `generation_tags`, `model_preferences`, `speech_model_preferences`, `audio_generations` (rebuilt by 0012: provider, model_name, nullable voice, `cost_status`, `estimate_micros`, `duration_ms`) |
 | File store | local fs under `<data dir>` | `storage/file-store.ts` (images and audio) | `generations/<id>/output-N.<ext>`, `input-N.<ext>`; `audio/<id>.mp3\|wav`; `.staging/` for atomic commit/delete |
 
 ## Frontend / UI foundation
@@ -149,7 +149,7 @@ C4Container
   sidebar (`app-sidebar.tsx`: one «Sections» nav with a labelled group per section group — Image, Audio;
   ADR-0046), page, breadcrumb, title and not-found (ADR-0022); Generate stays mounted, Speech mounts on
   its first visit and then stays (ADR-0023, ADR-0045). Current sections: Image — Generate `/`, Gallery
-  `/gallery`, Models `/models` (Image view); Audio — Speech `/audio/speech` (former `/speech` redirects), Gallery `/audio/gallery` (accessible name «Audio gallery»), Models `/models?tab=audio` (the same page on its Audio view, section `audio-models`, accessible name «Audio models», ADR-0056). The sidebar footer shows each configured provider's balance (`features/balances/`, one query per provider, `GET /api/providers/{id}/balance` through `ImageProvider.balance()`, ADR-0055).
+  `/gallery`, Models `/models` (Image view); Audio — Speech `/audio/speech` (former `/speech` redirects), Gallery `/audio/gallery` (accessible name «Audio gallery»), Voices `/audio/voices` (voice presets; a preset's page `/audio/voices/<id>` is owned by the section — aliases redirect only when declared, ADR-0060 — and a recording dialog belongs to the grid named in its history state, ADR-0059), Models `/models?tab=audio` (the same page on its Audio view, section `audio-models`, accessible name «Audio models», ADR-0056). The sidebar footer shows each configured provider's balance (`features/balances/`, one query per provider, `GET /api/providers/{id}/balance` through `ImageProvider.balance()`, ADR-0055).
 - **Theme:** light/dark/system (ADR-0024).
 - **Closest UI precedents:** gallery grid + detail modal (`features/gallery/Gallery.tsx`,
   `GenerationDialog.tsx`, `Tile.tsx`, `CardBadges.tsx`, `Notes.tsx`, `DeleteGeneration.tsx`); Models
