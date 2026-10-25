@@ -23,7 +23,7 @@ Committed approach: the navigation becomes two groups — **Image** first (Gener
 - Decision (owner, 2026-10-25): images and audio stay separate — separate records, separate sections — and audio reuses the image side's saving, cost lookup and page building blocks rather than merging both into one «media» record. The Speech page moves under the Audio group's address space (`/audio/speech`; steps 19 and 21 add siblings under `/audio/`). Its former address `/speech` redirects there, so the address bar shows the new one.
 - Decision (owner, 2026-10-25): the prototype's stored data is kept. Recordings that have an amount become cost `known`; recordings without one become `unavailable`.
 - Decision override: prototype recordings with an amount become cost `known` although the amount was computed from the published price, not reported by the provider — rationale: owner decision 2026-10-25; per-character prices are the billing formula. The prototype did store the provider's reference, but by owner decision its rows are not looked up again — their amount is final.
-- Decision (assumed, see §8): a recording keeps its up-front price estimate beside its cost. This differs from image generations, where the estimate is never stored. The reason is that a speech price is almost always per character, so the estimate is the best figure the Owner has until (or unless) the provider reports the real cost.
+- Decision (owner, 2026-10-25, see §8 Q2): a recording keeps its up-front price estimate beside its cost. This differs from image generations, where the estimate is never stored. The reason is that a speech price is almost always per character, so the estimate is the best figure the Owner has until (or unless) the provider reports the real cost.
 
 ## 2. Goals
 
@@ -233,4 +233,4 @@ Committed approach: the navigation becomes two groups — **Image** first (Gener
 ## 8. Open questions
 
 - [x] Does OpenRouter's generation lookup report the actual charge of a speech request? **Yes** — resolved at ship verification 2026-10-25: three real recordings (ElevenLabs v4, Gemini 3.8 Flash TTS, Fish Audio S1) all went from pending to known through the generation lookup within the bounded schedule (ElevenLabs and Fish equal to the estimate). — owner: agent, due: ship verification.
-- [ ] Should a recording keep its up-front estimate beside its cost (unlike images)? Default now: yes, always labelled as an estimate (assumed in specify; glossary amended). — owner: Owner, due: review of step 18.
+- [x] Should a recording keep its up-front estimate beside its cost (unlike images)? **Yes** — decided by the Owner 2026-10-25 (at the start of step 19): `estimate_micros` stays stored beside the cost, always labelled as an estimate. — owner: Owner, due: review of step 18.

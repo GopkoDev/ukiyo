@@ -417,7 +417,7 @@ ADR files live under `docs/features/text-to-speech/adr/NNNN-<title>.md`.
 | PCM sample rate missing from a provider's content type | Low | default 24 000 Hz mono 16-bit, the documented OpenRouter example; a family override in the map | agent |
 | Rebuilding `audio_generations` on the owner's real DB | Medium | migration tested on a copy of the real DB; ship verification runs on a copy in the scratchpad; `down` restores the 0011 shape | agent |
 | A synchronous request lost on page reload is still billed | Low | the server completes and saves it regardless of the client; it appears in the recent recordings (AC-17) | — |
-| Product open question (spec §8 Q2): keep the estimate beside the cost — the architecture is decided (ADR-0043); a «no» only drops `estimate_micros` in a later migration and the «≈» label | Low | answer at the review of step 18 | Owner |
+| ~~Product open question (spec §8 Q2): keep the estimate beside the cost~~ — closed 2026-10-25: the Owner keeps `estimate_micros` (ADR-0043) | — | closed | Owner |
 | Step 19 adds `ON DELETE CASCADE` children of `audio_generations`; any later rebuild of the table (or 0012 `down` after step 19) would cascade-delete them | Medium | later rebuilds copy children first or run with foreign keys off outside the transaction; noted for steps 19–21 | agent (step 19) |
 
 **Accepted debt (acceptable in v1, plan to fix later):**

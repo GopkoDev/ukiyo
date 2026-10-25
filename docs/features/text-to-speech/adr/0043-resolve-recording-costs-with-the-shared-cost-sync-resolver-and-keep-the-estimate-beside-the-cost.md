@@ -21,7 +21,7 @@ A speech answer is raw bytes. It carries the `X-Generation-Id` header but no pri
 
 - Spec AC-13 and §6 «Cost lookups»: the same bounds as images, resumed after a restart, never `$0` for unknown.
 - Reuse of a tested resolver rather than a copy.
-- Spec §1 / CONTEXT: the estimate is kept, labelled, beside the cost (provisional, spec §8 Q2).
+- Spec §1 / CONTEXT: the estimate is kept, labelled, beside the cost (confirmed by the Owner 2026-10-25, spec §8 Q2).
 
 ## Considered options
 
@@ -42,7 +42,7 @@ A speech answer is raw bytes. It carries the `X-Generation-Id` header but no pri
 - Two resolver instances and two boot resumes; trivial cost.
 
 **Neutral**
-- If spec §8 Q2 is answered «no», `estimate_micros` is dropped in a later migration; the cost path is unaffected.
+- Spec §8 Q2 was answered «yes» (Owner, 2026-10-25): `estimate_micros` stays.
 
 ## Links
 
