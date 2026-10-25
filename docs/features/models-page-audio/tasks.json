@@ -1,0 +1,107 @@
+{
+  "slug": "models-page-audio",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Promote the speech-preference migration and test it",
+      "layer": "migration",
+      "deps": [],
+      "acs": ["AC-05", "AC-06"],
+      "dod": "0015 up/down promoted unchanged from staging; migration test (apply over 0014 with image prefs: rows unchanged; rollback drops only the new table); gate green",
+      "files_hint": [
+        "docs/features/models-page-audio/migrations/",
+        "migrations/",
+        "src/server/modules/models/migration.int.test.ts"
+      ],
+      "file": "docs/features/models-page-audio/tasks/T1-promote-the-speech-preference-migration-and-test.md",
+      "status": "todo"
+    },
+    {
+      "id": "T2",
+      "title": "Kind-aware preference repo and routes (speech checked against the speech catalog)",
+      "layer": "backend",
+      "deps": ["T1"],
+      "acs": ["AC-02", "AC-05", "AC-06", "AC-07", "AC-14"],
+      "dod": "GET/PATCH accept kind (image default, image tests unchanged); speech flag-on checked against speech catalog; off-writes skip it; kept apart; guard refusal; nfr p95 \u2264 50 ms; gate green",
+      "files_hint": ["src/shared/models.ts", "src/server/modules/models/", "src/server/app.ts"],
+      "file": "docs/features/models-page-audio/tasks/T2-kind-aware-preference-repo-and-routes.md",
+      "status": "todo"
+    },
+    {
+      "id": "T3",
+      "title": "Provider balance capability and per-provider balance read; remove speech credits",
+      "layer": "backend",
+      "deps": [],
+      "acs": ["AC-11", "AC-12", "AC-14", "AC-15"],
+      "dod": "OpenRouter + Vercel adapters balance(); GET /providers/{id}/balance with a 10 s deadline, null on failure, 404 unknown, 409 not configured; /audio/credits + credits() removed; no key in answer; gate green",
+      "files_hint": ["src/server/modules/providers/", "src/shared/providers.ts", "src/server/modules/audio/"],
+      "file": "docs/features/models-page-audio/tasks/T3-provider-balance-capability-per-provider-read.md",
+      "status": "todo"
+    },
+    {
+      "id": "T4",
+      "title": "Typed client + shared balance query; sidebar balances; refresh triggers",
+      "layer": "web",
+      "deps": ["T3"],
+      "acs": ["AC-11", "AC-12", "AC-13"],
+      "dod": "api.providerBalances; useProviderBalances; ProviderBalances in sidebar; invalidated on job end and speech settle; Speech page credits line from shared query; component tests count requests; gate green",
+      "files_hint": [
+        "src/web/lib/api.ts",
+        "src/web/features/balances/",
+        "src/web/components/app-sidebar.tsx",
+        "src/web/features/generate/GeneratePanel.tsx",
+        "src/web/features/audio/SpeechPage.tsx"
+      ],
+      "file": "docs/features/models-page-audio/tasks/T4-typed-client-shared-balance-query-sidebar.md",
+      "status": "todo"
+    },
+    {
+      "id": "T5",
+      "title": "Models page tabs + audio-models section",
+      "layer": "web",
+      "deps": [],
+      "acs": ["AC-09", "AC-10"],
+      "dod": "Tabs in address; audio-models section owns /models?tab=audio; alias rule on path part; one current entry; existing Models tests unchanged; gate green",
+      "files_hint": ["src/web/sections.tsx", "src/web/App.tsx", "src/web/features/models/ModelsPage.tsx"],
+      "file": "docs/features/models-page-audio/tasks/T5-models-page-tabs-audio-models-section.md",
+      "status": "todo"
+    },
+    {
+      "id": "T6",
+      "title": "Audio models table with \u2605 / Show in picker / No longer offered",
+      "layer": "web",
+      "deps": ["T2", "T5"],
+      "acs": ["AC-01", "AC-02", "AC-06", "AC-07", "AC-08"],
+      "dod": "AudioModels view per screens SCR-02; kind-aware preference hooks; gate green",
+      "files_hint": ["src/web/features/models/"],
+      "file": "docs/features/models-page-audio/tasks/T6-audio-models-table-with-star-show.md",
+      "status": "todo"
+    },
+    {
+      "id": "T7",
+      "title": "Speech model list: favorites first, hidden out, auto-pick",
+      "layer": "web",
+      "deps": ["T2"],
+      "acs": ["AC-03", "AC-04", "AC-08"],
+      "dod": "arrangeSpeechModels unit; ModelSelect Favorites group; selected hidden kept; auto-pick first favorite/visible; gate green",
+      "files_hint": [
+        "src/web/features/audio/ModelSelect.tsx",
+        "src/web/features/audio/useSpeechDraft.ts",
+        "src/web/features/audio/SpeechPage.tsx"
+      ],
+      "file": "docs/features/models-page-audio/tasks/T7-speech-model-list-favorites-first-hidden.md",
+      "status": "todo"
+    },
+    {
+      "id": "T8",
+      "title": "Docs: architecture map, design-system inventory",
+      "layer": "docs",
+      "deps": ["T4", "T6", "T7"],
+      "acs": ["AC-10"],
+      "dod": "architecture-map and design-system updated with new blocks/components",
+      "files_hint": ["docs/architecture-map.md", "docs/design-system.md"],
+      "file": "docs/features/models-page-audio/tasks/T8-docs-architecture-map-design-system-inventory.md",
+      "status": "todo"
+    }
+  ]
+}
