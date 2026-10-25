@@ -104,7 +104,7 @@
       "dod": "`Notes.test.tsx` and dialog tests pass without edits; gate green",
       "files_hint": ["src/web/features/media-gallery/NotesCard.tsx", "src/web/features/gallery/Notes.tsx"],
       "file": "docs/features/audio-gallery/tasks/T7-extract-notes-card.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T8",

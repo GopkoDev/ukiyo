@@ -9,8 +9,8 @@ files_hint: ["src/web/features/media-gallery/NotesCard.tsx", "src/web/features/g
 owner: "agent (sdd:implement)"
 estimate: "S"
 context_budget: "S"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T7 — Extract the notes card from the image Notes
