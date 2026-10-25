@@ -9,8 +9,8 @@ files_hint: ["src/web/lib/playback.ts", "src/web/lib/playback.test.ts", "src/web
 owner: "agent (sdd:implement)"
 estimate: "S"
 context_budget: "S"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T9 — Coordinate playback app-wide so one recording plays at a time

@@ -15,7 +15,7 @@
 | T6 | Extract the dialog stepping engine and frame from the image dialog | ui | agent | M | T5 | done | COMMIT |
 | T7 | Extract the notes card from the image Notes | ui | agent | S | T5 | done | COMMIT |
 | T8 | Add the recording detail route and let sections own their detail renderers | wiring | agent | M | — | done | COMMIT |
-| T9 | Coordinate playback app-wide so one recording plays at a time | ui | agent | S | T8 | todo | — |
+| T9 | Coordinate playback app-wide so one recording plays at a time | ui | agent | S | T8 | done | COMMIT |
 | T10 | Add the audio gallery's API client, view parsing, query keys and cache patching | ui | agent | M | T3 | todo | — |
 | T11 | Build the Audio → Gallery section: grid, recording card, model choice and states | ui | agent | M | T5, T8, T9, T10 | todo | — |
 | T12 | Build the audio «By model» overview | ui | agent | S | T11 | todo | — |

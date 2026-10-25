@@ -103,6 +103,7 @@ export function SpeechPage() {
   const credits = useQuery({ queryKey: CREDITS_KEY, queryFn: api.speechCredits, retry: false });
   const draft = useSpeechDraft(models.data?.models);
   const [result, setResult] = useState<{ recording: Recording; fresh: boolean } | null>(null);
+  const rootRef = useRef<HTMLElement>(null);
   // The latest result is read back while its cost is pending, so it settles without a reload (spec AC-13, review R1).
   const latest = useQuery({
     queryKey: ["recording", result?.recording.id],
@@ -124,7 +125,8 @@ export function SpeechPage() {
       queryClient.invalidateQueries({ queryKey: CREDITS_KEY });
     },
     onSuccess: (recording) => {
-      setResult({ recording, fresh: true });
+      // A result that arrives while the Owner is on another section never starts playing by itself (ADR-0050).
+      setResult({ recording, fresh: !rootRef.current?.closest("[hidden]") });
       queryClient.invalidateQueries({ queryKey: RECORDINGS_KEY });
     },
   });
@@ -169,7 +171,7 @@ export function SpeechPage() {
   );
 
   return (
-    <section aria-label="Text to Speech" className="space-y-4 lg:space-y-6">
+    <section ref={rootRef} aria-label="Text to Speech" className="space-y-4 lg:space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-bold text-2xl tracking-tight">Text to Speech</h2>

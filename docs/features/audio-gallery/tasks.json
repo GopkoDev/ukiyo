@@ -138,7 +138,7 @@
         "src/web/features/audio/SpeechResult.tsx"
       ],
       "file": "docs/features/audio-gallery/tasks/T9-app-wide-playback-coordinator.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T10",

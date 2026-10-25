@@ -241,6 +241,25 @@ describe("Speech page — across sections (AC-02, AC-17)", () => {
     expect(await screen.findByRole("region", { name: "Latest recording" })).toBeVisible();
     expect(m.createRecording).toHaveBeenCalledTimes(1);
   });
+
+  it("does not start playing a result that finished while the Owner was in another section (audio-gallery AC-02)", async () => {
+    let finish: (r: Recording) => void = () => {};
+    m.createRecording.mockImplementation(() => new Promise((res) => (finish = res)));
+    const other: Section = { id: "other", path: "/other", label: "Other", icon: Boxes, page: () => <p>Other page</p> };
+    const speech = SECTIONS.find((s) => s.id === "speech") as Section;
+    window.history.replaceState(null, "", "/audio/speech");
+    renderWithQuery(<App sections={[other, speech]} />);
+    await loaded();
+    fireEvent.change(text(), { target: { value: "Hello there" } });
+    fireEvent.click(generate());
+    await waitFor(() => expect(generate()).toHaveTextContent("Generating…"));
+    const nav = () => screen.getByRole("navigation", { name: "Sections" });
+    fireEvent.click(within(nav()).getByRole("link", { name: "Other" }));
+    await act(async () => finish(recording()));
+    fireEvent.click(within(nav()).getByRole("link", { name: "Speech" }));
+    const result = await screen.findByRole("region", { name: "Latest recording" });
+    expect(result.querySelector("audio")?.autoplay).toBe(false);
+  });
 });
 
 describe("Speech page — recent recordings (SCR-04, AC-15, AC-18)", () => {

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { installPlayback, pauseAll } from "@/lib/playback";
 import { isDetailRoute, isDialogVisit, Link, type Route, replace, useRoute } from "@/lib/router";
 import { SECTIONS, type Section, sectionFor } from "@/sections";
 
@@ -59,6 +60,12 @@ export function App({ sections = SECTIONS }: { sections?: readonly Section[] }) 
   const current = sectionFor(route, sections);
   const detail = isDetailRoute(route) && current?.detail?.route === route.name ? current.detail : undefined;
   const itemId = isDetailRoute(route) ? route.id : "";
+
+  // One recording plays at a time; any route change (a section, a dialog opening, a step) pauses it (ADR-0050).
+  useEffect(() => installPlayback(document), []);
+  const address = route.name === "page" ? route.pathname + route.search : `${route.name}/${route.id}`;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs on every address change
+  useEffect(() => pauseAll(document), [address]);
 
   useEffect(() => {
     document.title = current ? `${current.label} · Ukiyo` : "Page not found · Ukiyo";
