@@ -9,8 +9,8 @@ files_hint: ["src/server/modules/audio/presets.nfr.int.test.ts"]
 owner: "dmytro.hopko"
 estimate: "S"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T5 — Preset server timing NFRs

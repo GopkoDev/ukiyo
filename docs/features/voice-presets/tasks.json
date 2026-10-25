@@ -72,7 +72,7 @@
       "dod": "nfr test: 200 presets × 5 000 recordings list ≤ 100 ms p95 without provider call; preset page ≤ 100 ms p95; save/update/rename/delete ≤ 50 ms p95 with a stale catalog entry; gate green",
       "files_hint": ["src/server/modules/audio/presets.nfr.int.test.ts"],
       "file": "docs/features/voice-presets/tasks/T5-preset-server-timing-nfrs.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T6",
