@@ -20,7 +20,7 @@
 | T12 | Build ModelSelect, VoiceSelect and descriptor-driven VoiceControls | ui | pipeline agent | M | T2 | done | COMMIT |
 | T13 | Rebuild the Speech page on the new contract | ui | pipeline agent | L | T9, T10, T11, T12 | done | COMMIT |
 | T14 | List recent recordings with reuse, delete and live pending costs | ui | pipeline agent | M | T13 | done | COMMIT |
-| T15 | Prove the audio NFRs and the image/audio separation | tests | pipeline agent | S | T9 | todo | — |
+| T15 | Prove the audio NFRs and the image/audio separation | tests | pipeline agent | S | T9 | done | COMMIT |
 | T16 | Register the audio components in the design canon and the architecture map | docs | pipeline agent | S | T13, T14 | todo | — |
 
 **Total:** 16 tasks, ~8 person-days.

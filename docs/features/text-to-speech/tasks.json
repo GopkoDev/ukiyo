@@ -240,7 +240,7 @@
       "dod": "timing tests meet the §6 thresholds and cross-context tests prove recordings stay out of every image list and the key never appears in answers, rows or settings",
       "files_hint": ["src/server/modules/audio/nfr.int.test.ts", "src/server/modules/audio/cross-context.int.test.ts"],
       "file": "docs/features/text-to-speech/tasks/audio-nfr-and-cross-context.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T16",
