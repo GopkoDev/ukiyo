@@ -16,8 +16,8 @@ frontend: "react 19 + vite 8 + tailwind v4 + shadcn/ui"
 
 > **Current map** (brownfield scan of `cbb9c47`, branch `feature/audio-generation`). It replaces the
 > greenfield foundation map of `96e6530`: the skeleton and roadmap steps 2–14 are built and merged
-> into `main`; two prototype commits (`a1169a1`, `cbb9c47`) add a text-to-speech page that does
-> **not** yet follow the conventions below (see §Constraints → *Audio prototype*).
+> into `main`; on `feature/audio-generation`, roadmap step 18 rebuilt the text-to-speech prototype
+> (`a1169a1`, `cbb9c47`) on the conventions below (ADR-0039…0046 in `docs/features/text-to-speech/adr/`).
 > Foundational decisions: [ADR-0001](./adr/0001-use-typescript-node-hono-react-stack.md),
 > [ADR-0002](./adr/0002-organize-as-modular-monolith-with-provider-port.md),
 > [ADR-0003](./adr/0003-store-metadata-in-sqlite-and-images-on-disk.md); feature ADRs 0004–0038 live in
@@ -27,7 +27,7 @@ frontend: "react 19 + vite 8 + tailwind v4 + shadcn/ui"
 `127.0.0.1` calls OpenRouter and Vercel AI Gateway to generate images (text→img, img→img,
 img+text→img), stores every generation locally (image files + inputs + full metadata) and serves a
 React gallery to inspect, comment, tag, delete, re-run and reuse outputs, filtered or grouped by
-model and by identical prompt. A prototype Speech page generates text-to-speech through OpenRouter.
+model and by identical prompt. An Audio section turns text into speech with any OpenRouter speech model.
 No auth, no sync, no multi-user.
 
 ## Stack
@@ -130,8 +130,8 @@ C4Container
 
 | Store | Engine | Accessed via | Notes |
 |---|---|---|---|
-| Metadata DB | SQLite (`<data dir>/gen-img.db`, WAL) | `*/repo.ts` (better-sqlite3) | migrations 0001–0011: `generations` (+ cost_ref, source lineage, prompt_key), `generation_images`, `generation_inputs`, `generation_comments`, `generation_tags`, `model_preferences`, `audio_generations` (prototype: no `cost_status`) |
-| File store | local fs under `<data dir>` | `storage/file-store.ts` (images); audio prototype writes `audio/<id>.<ext>` directly with `node:fs` | `generations/<id>/output-N.<ext>`, `input-N.<ext>`; `.staging/` for atomic commit/delete |
+| Metadata DB | SQLite (`<data dir>/gen-img.db`, WAL) | `*/repo.ts` (better-sqlite3) | migrations 0001–0012: `generations` (+ cost_ref, source lineage, prompt_key), `generation_images`, `generation_inputs`, `generation_comments`, `generation_tags`, `model_preferences`, `audio_generations` (rebuilt by 0012: provider, model_name, nullable voice, `cost_status`, `estimate_micros`, `duration_ms`) |
+| File store | local fs under `<data dir>` | `storage/file-store.ts` (images and audio) | `generations/<id>/output-N.<ext>`, `input-N.<ext>`; `audio/<id>.mp3\|wav`; `.staging/` for atomic commit/delete |
 
 ## Frontend / UI foundation
 
