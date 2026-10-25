@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { ModelPreference } from "../../../shared/models";
 import { billedChars, type Recording, type SpeechModel, settingsFor, type VoiceSettings } from "../../../shared/speech";
+import { autoPickSpeech } from "./speechArrange";
 
 export type Draft = ReturnType<typeof useSpeechDraft>;
 
@@ -8,14 +10,25 @@ export type Draft = ReturnType<typeof useSpeechDraft>;
  * One settings bag for every model (no per-model memory): what is shown and sent is always the current model's
  * accepted subset, shared values brought into its range (spec AC-08).
  */
-export function useSpeechDraft(models: SpeechModel[] | undefined) {
+export function useSpeechDraft(
+  models: SpeechModel[] | undefined,
+  /** Speech-model preferences; `settled` once read, failed or waited for (models-page-audio AC-04). */
+  prefs: { list: ModelPreference[] | null | undefined; settled: boolean } = { list: null, settled: true },
+) {
   const [text, setText] = useState("");
   const [modelId, setModelId] = useState("");
   const [chosenVoice, setChosenVoice] = useState<string | null | undefined>(undefined);
   const [raw, setRaw] = useState<VoiceSettings>({});
   const [notice, setNotice] = useState<string | null>(null);
 
-  const model = models?.find((m) => m.id === modelId) ?? models?.[0];
+  const chosen = models?.find((m) => m.id === modelId);
+  // Ukiyo's own pick (first favorite, else first visible) is pinned once the preferences have settled, so the
+  // selection never jumps later — hiding the selected model keeps it selected (models-page-audio AC-04).
+  const auto = models && models.length > 0 ? autoPickSpeech(models, prefs.list) : undefined;
+  useEffect(() => {
+    if (!chosen && auto && prefs.settled) setModelId(auto.id);
+  }, [chosen, auto, prefs.settled]);
+  const model = chosen ?? auto;
   /** The voice kept if the model offers it, else its first voice, else the provider default (spec AC-08). */
   const voice: string | null = (() => {
     if (!model) return null;

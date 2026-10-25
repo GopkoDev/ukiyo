@@ -10,8 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError, api } from "@/lib/api";
 import { replace, useRoute } from "@/lib/router";
 import { cn } from "@/lib/utils";
+import type { ModelPreference } from "../../../shared/models";
 import type { Recording, SpeechModel } from "../../../shared/speech";
 import { balanceText, refreshBalances, useProviderBalance, useProviders } from "../balances/balances";
+import { useModelPreferences } from "../models/preferences";
 import { onRecordingDeleted } from "./gallery/patchRecordings";
 import { SPEECH_PATH } from "./gallery/reuse";
 import { limitText, ModelSelect } from "./ModelSelect";
@@ -25,6 +27,7 @@ import { VoiceControls } from "./VoiceControls";
 import { VoiceSelect } from "./VoiceSelect";
 
 const group = (n: number) => n.toLocaleString("en-US").replace(/,/g, " ");
+const PREFS_WAIT_MS = 1500;
 const NOT_CONFIGURED = "Speech needs OpenRouter — set OPENROUTER_API_KEY in .env.local and restart the server.";
 
 const notConfigured = (e: unknown) => e instanceof ApiError && e.code === "PROVIDER_NOT_CONFIGURED";
@@ -52,12 +55,14 @@ function SettingsTab({
   idPrefix,
   draft,
   models,
+  prefs,
   modelsError,
   onRetry,
 }: {
   idPrefix: string;
   draft: Draft;
   models: SpeechModel[] | undefined;
+  prefs: ModelPreference[] | null | undefined;
   modelsError: string | null;
   onRetry: () => void;
 }) {
@@ -80,6 +85,7 @@ function SettingsTab({
           <ModelSelect
             id={`${idPrefix}-model`}
             models={models}
+            prefs={prefs}
             value={draft.model?.id ?? ""}
             onChange={draft.selectModel}
           />
@@ -109,7 +115,19 @@ export function SpeechPage() {
   const providers = useProviders();
   const openRouter = providers.data?.providers.find((p) => p.id === "openrouter");
   const credits = useProviderBalance("openrouter", openRouter?.configured === true);
-  const draft = useSpeechDraft(models.data?.models);
+  // The Owner's speech-model favorites / hidden ones shape the list (models-page-audio AC-03, AC-04); a slow read
+  // doesn't hold the automatic pick for longer than GeneratePanel's 1.5 s.
+  const speechPrefs = useModelPreferences("openrouter", openRouter?.configured === true, "speech");
+  const [prefsWaited, setPrefsWaited] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setPrefsWaited(true), PREFS_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  const prefList = speechPrefs.isError ? null : speechPrefs.data?.preferences;
+  const draft = useSpeechDraft(models.data?.models, {
+    list: prefList,
+    settled: speechPrefs.isSuccess || speechPrefs.isError || prefsWaited || openRouter?.configured === false,
+  });
   const [result, setResult] = useState<{ recording: Recording; fresh: boolean } | null>(null);
   const rootRef = useRef<HTMLElement>(null);
   // A recording deleted anywhere (the gallery, the recent list) is no longer the latest result (audio-gallery AC-11).
@@ -215,6 +233,7 @@ export function SpeechPage() {
           idPrefix={idPrefix}
           draft={draft}
           models={models.data?.models}
+          prefs={prefList}
           modelsError={models.isError ? errorText(models.error) : null}
           onRetry={() => models.refetch()}
         />
