@@ -102,8 +102,7 @@ describe("migrations 0013_create_audio_curation + 0014_index_audio_generations_b
   it("rolls back to 0012 cleanly: tables and index gone, recordings intact", () => {
     const before = all();
     migrateUp(db);
-    migrateDown(db);
-    migrateDown(db);
+    while (appliedVersions(db).at(-1) !== "0012") migrateDown(db); // later migrations (0015+) roll back first
     expect(appliedVersions(db).at(-1)).toBe("0012");
     const names = db.prepare("SELECT name FROM sqlite_master").pluck().all();
     expect(names).not.toContain("audio_generation_tags");

@@ -153,6 +153,7 @@ describe("migration runner", () => {
       "0012",
       "0013",
       "0014",
+      "0015",
     ]);
     expect(appliedVersions(db)).toEqual([
       "0001",
@@ -169,9 +170,11 @@ describe("migration runner", () => {
       "0012",
       "0013",
       "0014",
+      "0015",
     ]);
     expect(migrateUp(db)).toEqual([]);
 
+    expect(migrateDown(db)?.version).toBe("0015");
     expect(migrateDown(db)?.version).toBe("0014");
     expect(migrateDown(db)?.version).toBe("0013");
     expect(migrateDown(db)?.version).toBe("0012");
@@ -204,6 +207,7 @@ describe("migration runner", () => {
       "0012",
       "0013",
       "0014",
+      "0015",
     ]);
   });
 
