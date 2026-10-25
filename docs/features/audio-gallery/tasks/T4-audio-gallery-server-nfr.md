@@ -9,8 +9,8 @@ files_hint: ["src/server/modules/audio/nfr.int.test.ts"]
 owner: "agent (sdd:implement)"
 estimate: "S"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T4 — Add the audio gallery's server timing tests

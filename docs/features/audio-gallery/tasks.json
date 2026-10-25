@@ -61,7 +61,7 @@
       "dod": "nfr tests pass in the serial project; gate green",
       "files_hint": ["src/server/modules/audio/nfr.int.test.ts"],
       "file": "docs/features/audio-gallery/tasks/T4-audio-gallery-server-nfr.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T5",

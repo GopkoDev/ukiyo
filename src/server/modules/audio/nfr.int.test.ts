@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { fixture } from "../../../../tests/helpers/fake-fetch";
 import { seedRecording } from "../../../../tests/helpers/recordings";
 import { createTestApp } from "../../../../tests/helpers/test-app";
@@ -7,7 +7,7 @@ import { GENERATION_TIMEOUT_MS } from "../../app";
 // text-to-speech spec §6 NFRs, measured in-process (server time only).
 const p95 = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.ceil(xs.length * 0.95) - 1] ?? Number.NaN;
 
-async function timed(n: number, fn: (i: number) => Promise<unknown>) {
+async function timed(n: number, fn: (i: number) => unknown) {
   const out: number[] = [];
   for (let i = 0; i < n; i++) {
     const t0 = performance.now();
@@ -117,3 +117,74 @@ describe("text-to-speech NFRs", () => {
     expect(elapsed).toBeLessThan(2000);
   });
 });
+
+// audio-gallery spec §6 NFRs.
+const jsonReq = (method: string, body: unknown) => ({
+  method,
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify(body),
+});
+const galleryId = (n: number) => `01R${String(n).padStart(23, "0")}`;
+const MODELS = Array.from({ length: 30 }, (_, i) => `maker${i}/model-${i}`);
+
+for (const mode of ["catalog ok", "catalog hanging"] as const) {
+  describe(`audio gallery NFRs (1 000 recordings, 30 models, 10 tags + a comment each; ${mode})`, () => {
+    let t: ReturnType<typeof createTestApp>;
+    beforeAll(() => {
+      const fetchImpl = (async (input: RequestInfo | URL) => {
+        if (String(input).includes("/models?output_modalities=speech")) {
+          if (mode === "catalog hanging") return new Promise<Response>(() => {});
+          return Response.json(fixture("openrouter/speech/models.json"));
+        }
+        return new Response("{}", { status: 404 });
+      }) as typeof fetch;
+      t = createTestApp({ openRouterApiKey: "sk-test" }, { fetch: fetchImpl });
+      for (let i = 1; i <= 1000; i++)
+        seedRecording(t.db, t.dataDir, {
+          id: galleryId(i),
+          model: MODELS[i % 30],
+          modelName: i % 7 === 0 ? null : `Model ${i % 30}`,
+          tags: Array.from({ length: 10 }, (_, k) => `tag ${k}`),
+          comment: `A comment for recording ${i}`,
+        });
+    }, 120_000);
+    afterAll(() => t.cleanup());
+
+    it("any page of 24 (first, continued, one model) ≤ 300 ms p95", async () => {
+      const first = await timed(50, () => t.app.request("/api/audio/recordings?limit=24"));
+      const next = await timed(50, (i) =>
+        t.app.request(`/api/audio/recordings?limit=24&cursor=${galleryId(900 - i * 10)}`),
+      );
+      const one = await timed(50, (i) =>
+        t.app.request(`/api/audio/recordings?limit=24&model=${encodeURIComponent(MODELS[i % 30] ?? "")}`),
+      );
+      expect(p95(first)).toBeLessThanOrEqual(300);
+      expect(p95(next)).toBeLessThanOrEqual(300);
+      expect(p95(one)).toBeLessThanOrEqual(300);
+    });
+
+    it("model groups with the four latest ≤ 300 ms p95", async () => {
+      const xs = await timed(50, () => t.app.request("/api/audio/recordings/models?latest=4"));
+      expect(p95(xs)).toBeLessThanOrEqual(300);
+    });
+
+    it("tag add and comment save ≤ 100 ms p95", async () => {
+      const tags = await timed(50, (i) =>
+        t.app.request(`/api/audio/recordings/${galleryId(i + 1)}/tags`, jsonReq("POST", { tag: "tag 0" })),
+      );
+      const comments = await timed(50, (i) =>
+        t.app.request(`/api/audio/recordings/${galleryId(i + 1)}/comment`, jsonReq("PUT", { body: `saved ${i}` })),
+      );
+      expect(p95(tags)).toBeLessThanOrEqual(100);
+      expect(p95(comments)).toBeLessThanOrEqual(100);
+    });
+
+    it("deleting a recording with its file, tags and comment ≤ 300 ms p95", async () => {
+      const xs = await timed(50, async (i) => {
+        const res = await t.app.request(`/api/audio/recordings/${galleryId(951 + i)}`, { method: "DELETE" });
+        expect(res.status).toBe(204);
+      });
+      expect(p95(xs)).toBeLessThanOrEqual(300);
+    });
+  });
+}
