@@ -93,7 +93,7 @@
         "src/web/features/gallery/GenerationDialog.tsx"
       ],
       "file": "docs/features/audio-gallery/tasks/T6-extract-dialog-stepping-engine.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T7",

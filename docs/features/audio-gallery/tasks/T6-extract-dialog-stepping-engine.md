@@ -9,8 +9,8 @@ files_hint: ["src/web/features/media-gallery/useDialogStepping.ts", "src/web/fea
 owner: "agent (sdd:implement)"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 # T6 — Extract the dialog stepping engine and frame from the image dialog
