@@ -232,5 +232,5 @@ Committed approach: the navigation becomes two groups — **Image** first (Gener
 
 ## 8. Open questions
 
-- [ ] Does OpenRouter's generation lookup report the actual charge of a speech request? Default now: try the lookup with the stored generation id; if it never reports a price, the cost becomes «unavailable» and the estimate stays visible (AC-13). — owner: agent, due: ship verification (one real call).
+- [x] Does OpenRouter's generation lookup report the actual charge of a speech request? **Yes** — resolved at ship verification 2026-10-25: three real recordings (ElevenLabs v4, Gemini 3.8 Flash TTS, Fish Audio S1) all went from pending to known through the generation lookup within the bounded schedule (ElevenLabs and Fish equal to the estimate). — owner: agent, due: ship verification.
 - [ ] Should a recording keep its up-front estimate beside its cost (unlike images)? Default now: yes, always labelled as an estimate (assumed in specify; glossary amended). — owner: Owner, due: review of step 18.
