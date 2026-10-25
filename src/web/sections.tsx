@@ -1,26 +1,60 @@
-import { Boxes, Images, type LucideIcon, Sparkles } from "lucide-react";
+import { AudioLines, Boxes, Images, Library, type LucideIcon, MicVocal, Sparkles } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
+import { AudioGalleryPage } from "@/features/audio/gallery/AudioGallery";
+import { RecordingPage } from "@/features/audio/gallery/RecordingDetail";
+import { RecordingDialog } from "@/features/audio/gallery/RecordingDialog";
+import { VOICES_PATH } from "@/features/audio/presets/queries";
+import { VoicesPage } from "@/features/audio/presets/VoicesPage";
+import { SpeechPage } from "@/features/audio/SpeechPage";
 import { Gallery } from "@/features/gallery/Gallery";
 import { GalleryViews } from "@/features/gallery/GalleryViews";
+import { GenerationDetail } from "@/features/gallery/GenerationDetail";
+import { GenerationDialog } from "@/features/gallery/GenerationDialog";
 import { GeneratePanel } from "@/features/generate/GeneratePanel";
 import { JobIndicator } from "@/features/generate/job";
 import { RecentGenerations } from "@/features/generate/RecentGenerations";
-import { ModelsPage } from "@/features/models/ModelsPage";
-import type { Route } from "@/lib/router";
+import { MODELS_PATH, ModelsPage, modelsTab } from "@/features/models/ModelsPage";
+import { type DetailRouteName, dialogGallery, type Route } from "@/lib/router";
+
+/** The blocks of the navigation bar, in order (CONTEXT: Section group; ADR-0046). */
+export const SECTION_GROUPS = [
+  { id: "image", label: "Image" },
+  { id: "audio", label: "Audio" },
+] as const;
+export type SectionGroup = (typeof SECTION_GROUPS)[number]["id"];
 
 /** One top-level area of Ukiyo (CONTEXT: Section). Adding a section = one entry here (ADR-0022). */
 export type Section = {
   id: string;
   path: string;
   label: string;
+  /** The entry's accessible name when its label alone is ambiguous («Gallery» in both groups → «Audio gallery»). */
+  accessibleName?: string;
   icon: LucideIcon;
   page: () => ReactNode;
-  /** Stays rendered (hidden) while another page shows, so its state survives (ADR-0023). */
-  keepMounted?: boolean;
+  /** Its block in the navigation bar; default «image» (ADR-0046). */
+  group?: SectionGroup;
+  /** Former addresses that still open this section; the address bar is replaced with `path` (ADR-0046). */
+  aliases?: readonly string[];
+  /**
+   * Stays rendered (hidden) while another page shows, so its state survives (ADR-0023). `"after-visit"` mounts it
+   * on its first visit only — a page that loads data doesn't load it until the Owner opens it (ADR-0045).
+   */
+  keepMounted?: boolean | "after-visit";
   /** Shown after the label in the navigation bar, e.g. a running generation on Generate. */
   indicator?: ComponentType;
   /** Claims addresses outside its own path, e.g. Gallery owns a generation's detail page. */
   owns?: (route: Route) => boolean;
+  /**
+   * How an owned item address renders (ADR-0048): the full page on a direct visit, the dialog over this section's
+   * grid on a visit from its own grid; `label` is the breadcrumb after the section.
+   */
+  detail?: {
+    route: DetailRouteName;
+    label: string;
+    Page: ComponentType<{ id: string }>;
+    Dialog: ComponentType<{ id: string }>;
+  };
 };
 
 function GalleryPage() {
@@ -45,6 +79,9 @@ function GeneratePage() {
   );
 }
 
+const trimSlash = (pathname: string) =>
+  pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+
 export const SECTIONS: readonly Section[] = [
   {
     id: "generate",
@@ -62,9 +99,59 @@ export const SECTIONS: readonly Section[] = [
     icon: Images,
     page: GalleryPage,
     owns: (route) => route.name === "detail",
+    detail: { route: "detail", label: "Generation", Page: GenerationDetail, Dialog: GenerationDialog },
   },
-  { id: "models", path: "/models", label: "Models", icon: Boxes, page: ModelsPage },
+  { id: "models", path: MODELS_PATH, label: "Models", icon: Boxes, page: ModelsPage },
+  {
+    id: "speech",
+    path: "/audio/speech",
+    aliases: ["/speech"],
+    group: "audio",
+    label: "Speech",
+    icon: AudioLines,
+    page: SpeechPage,
+    keepMounted: "after-visit",
+  },
+  {
+    id: "audio-gallery",
+    path: "/audio/gallery",
+    group: "audio",
+    label: "Gallery",
+    accessibleName: "Audio gallery",
+    icon: Library,
+    page: AudioGalleryPage,
+    // Every recording address except a dialog opened from a preset page (voice-presets ADR-0059).
+    owns: (route) => route.name === "recording" && dialogGallery(route) !== "voices",
+    detail: { route: "recording", label: "Recording", Page: RecordingPage, Dialog: RecordingDialog },
+  },
+  {
+    id: "voices",
+    path: VOICES_PATH,
+    group: "audio",
+    label: "Voices",
+    icon: MicVocal,
+    page: VoicesPage,
+    // A preset's own page (ADR-0060) and the recording dialogs opened over its grid (ADR-0059).
+    owns: (route) =>
+      (route.name === "page" && /^\/audio\/voices\/[^/]+$/.test(trimSlash(route.pathname))) ||
+      (route.name === "recording" && dialogGallery(route) === "voices"),
+    detail: { route: "recording", label: "Recording", Page: RecordingPage, Dialog: RecordingDialog },
+  },
+  {
+    // The Models page on its Audio view — one page, two sections by its tab (ADR-0056).
+    id: "audio-models",
+    path: `${MODELS_PATH}?tab=audio`,
+    group: "audio",
+    label: "Models",
+    accessibleName: "Audio models",
+    icon: Boxes,
+    page: ModelsPage,
+    owns: (route) =>
+      route.name === "page" && trimSlash(route.pathname) === MODELS_PATH && modelsTab(route.search) === "audio",
+  },
 ];
+
+export const groupOf = (s: Section): SectionGroup => s.group ?? "image";
 
 /** The section an address belongs to; none means «page not found». Exact paths, one trailing slash tolerated. */
 export function sectionFor(route: Route, sections: readonly Section[] = SECTIONS): Section | undefined {
@@ -73,7 +160,10 @@ export function sectionFor(route: Route, sections: readonly Section[] = SECTIONS
   );
 }
 
+/** A section's path without its query (`/models?tab=audio` → `/models`, ADR-0056). */
+export const pathPart = (path: string) => path.split("?")[0] ?? path;
+
 function matchPath(pathname: string, sections: readonly Section[]) {
-  const path = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
-  return sections.find((s) => s.path === path);
+  const path = trimSlash(pathname);
+  return sections.find((s) => s.path === path || s.aliases?.includes(path));
 }

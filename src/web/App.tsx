@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { NotFound } from "@/components/NotFound";
 import {
@@ -11,17 +11,16 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-import { GenerationDetail } from "@/features/gallery/GenerationDetail";
-import { GenerationDialog } from "@/features/gallery/GenerationDialog";
-import { isDialogVisit, Link, type Route, useRoute } from "@/lib/router";
-import { SECTIONS, type Section, sectionFor } from "@/sections";
+import { installPlayback, pauseAll } from "@/lib/playback";
+import { isDetailRoute, isDialogVisit, Link, type Route, replace, useRoute } from "@/lib/router";
+import { pathPart, SECTIONS, type Section, sectionFor } from "@/sections";
 
-/** Where the Owner is: the section, then «Generation» on a detail page; «Page not found» otherwise. */
+/** Where the Owner is: the section, then its item («Generation», «Recording») on a detail page; «Page not found» otherwise. */
 function Crumbs({ route, current }: { route: Route; current: Section | undefined }) {
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        {current && route.name === "detail" ? (
+        {current && isDetailRoute(route) ? (
           <>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
@@ -30,7 +29,7 @@ function Crumbs({ route, current }: { route: Route; current: Section | undefined
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>Generation</BreadcrumbPage>
+              <BreadcrumbPage>{current.detail?.label ?? "Item"}</BreadcrumbPage>
             </BreadcrumbItem>
           </>
         ) : (
@@ -59,10 +58,30 @@ export function App({ sections = SECTIONS }: { sections?: readonly Section[] }) 
   const route = useRoute();
   const dialog = isDialogVisit(route);
   const current = sectionFor(route, sections);
+  const detail = isDetailRoute(route) && current?.detail?.route === route.name ? current.detail : undefined;
+  const itemId = isDetailRoute(route) ? route.id : "";
+
+  // One recording plays at a time; any route change (a section, a dialog opening, a step) pauses it (ADR-0050).
+  useEffect(() => installPlayback(document), []);
+  const address = route.name === "page" ? route.pathname + route.search : `${route.name}/${route.id}`;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs on every address change
+  useEffect(() => pauseAll(document), [address]);
 
   useEffect(() => {
-    document.title = current ? `${current.label} · Ukiyo` : "Page not found · Ukiyo";
+    document.title = current ? `${current.accessibleName ?? current.label} · Ukiyo` : "Page not found · Ukiyo";
   }, [current]);
+
+  // A former address (alias) opens its section and the address bar shows the current one — no history entry (ADR-0046).
+  // Only a declared former address redirects; a section may own sub-paths of its own (voice-presets ADR-0060).
+  const aliased = route.name === "page" && current?.aliases?.includes(route.pathname.replace(/(.)\/$/, "$1")) === true;
+  useEffect(() => {
+    if (aliased && current && route.name === "page") replace(pathPart(current.path) + route.search);
+  }, [aliased, current, route]);
+
+  // «after-visit» sections mount on their first visit and then stay mounted (ADR-0045).
+  const [visited, setVisited] = useState<ReadonlySet<string>>(() => new Set(current ? [current.id] : []));
+  if (current && !visited.has(current.id)) setVisited(new Set([...visited, current.id]));
+  const mounted = (s: Section) => s.keepMounted === true || (s.keepMounted === "after-visit" && visited.has(s.id));
 
   return (
     <SidebarProvider>
@@ -77,22 +96,20 @@ export function App({ sections = SECTIONS }: { sections?: readonly Section[] }) 
         </header>
         <div className="min-w-0 flex-1 px-4 pb-6 md:px-6">
           {/* Kept-mounted pages sit at a fixed place in the tree, so showing or hiding them never remounts them. */}
-          {sections
-            .filter((s) => s.keepMounted)
-            .map((s) => (
-              <div key={s.id} hidden={s !== current || route.name === "detail"}>
-                <s.page />
-              </div>
-            ))}
+          {sections.filter(mounted).map((s) => (
+            <div key={s.id} hidden={s !== current || isDetailRoute(route)}>
+              <s.page />
+            </div>
+          ))}
           {/* The section page (the grid) sits at this one place for /gallery and a dialog visit, so it never remounts. */}
-          {route.name === "detail" && !dialog ? (
-            <GenerationDetail id={route.id} />
-          ) : !current ? (
+          {detail && !dialog ? (
+            <detail.Page id={itemId} />
+          ) : !current || (isDetailRoute(route) && !detail) ? (
             <NotFound />
           ) : (
             !current.keepMounted && <current.page />
           )}
-          {route.name === "detail" && dialog && <GenerationDialog id={route.id} />}
+          {detail && dialog && <detail.Dialog id={itemId} />}
         </div>
       </SidebarInset>
     </SidebarProvider>

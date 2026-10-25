@@ -1,0 +1,251 @@
+{
+  "slug": "audio-gallery",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Promote the audio curation migrations and test them on prototype-shaped data",
+      "layer": "migration",
+      "deps": [],
+      "acs": ["AC-10", "AC-11"],
+      "dod": "migration test passes: apply, cascade, rollback; existing step-18 migration tests still pass; `pnpm typecheck && pnpm lint && pnpm test` green",
+      "files_hint": [
+        "docs/features/audio-gallery/migrations/01_create_audio_curation.up.sql",
+        "docs/features/audio-gallery/migrations/02_index_audio_generations_by_model.up.sql",
+        "migrations/",
+        "src/server/modules/audio/migration.int.test.ts"
+      ],
+      "file": "docs/features/audio-gallery/tasks/T1-promote-audio-curation-migrations.md",
+      "status": "done"
+    },
+    {
+      "id": "T2",
+      "title": "Add model filter, model groups, stored names and tag/comment statements to the recordings repo",
+      "layer": "infra",
+      "deps": ["T1"],
+      "acs": ["AC-01", "AC-07", "AC-13", "AC-14", "AC-21"],
+      "dod": "repo integration tests for every new method pass; no change to image repos; gate green",
+      "files_hint": [
+        "src/server/modules/audio/repo.ts",
+        "src/server/modules/audio/repo.int.test.ts",
+        "tests/helpers/recordings.ts"
+      ],
+      "file": "docs/features/audio-gallery/tasks/T2-audio-repo-curation-and-model-queries.md",
+      "status": "done"
+    },
+    {
+      "id": "T3",
+      "title": "Expose model filter, model groups and curation through the audio service, routes and shared schemas",
+      "layer": "ports",
+      "deps": ["T2"],
+      "acs": ["AC-04", "AC-06", "AC-07", "AC-08", "AC-10", "AC-13", "AC-14", "AC-15", "AC-18", "AC-19"],
+      "dod": "route integration tests for every operation pass, answers parse with the shared schemas; Speech page tests still pass; gate green",
+      "files_hint": [
+        "src/shared/speech.ts",
+        "src/server/modules/audio/service.ts",
+        "src/server/modules/audio/routes.ts",
+        "src/server/modules/audio/domain.ts",
+        "src/server/modules/providers/speech-catalog.ts",
+        "src/server/app.ts",
+        "src/server/modules/audio/routes.int.test.ts",
+        "src/web/features/audio/"
+      ],
+      "file": "docs/features/audio-gallery/tasks/T3-audio-service-routes-and-shared-schemas.md",
+      "status": "done"
+    },
+    {
+      "id": "T4",
+      "title": "Add the audio gallery's server timing tests",
+      "layer": "tests",
+      "deps": ["T3"],
+      "acs": ["AC-01", "AC-07", "AC-11", "AC-13", "AC-14"],
+      "dod": "nfr tests pass in the serial project; gate green",
+      "files_hint": ["src/server/modules/audio/nfr.int.test.ts"],
+      "file": "docs/features/audio-gallery/tasks/T4-audio-gallery-server-nfr.md",
+      "status": "done"
+    },
+    {
+      "id": "T5",
+      "title": "Extract the media-neutral gallery primitives into a shared media-gallery layer",
+      "layer": "ui",
+      "deps": [],
+      "acs": ["AC-20"],
+      "dod": "all existing `src/web/features/gallery/*.test.tsx` and `App*.test.tsx` pass without edits; gate green",
+      "files_hint": [
+        "src/web/features/media-gallery/",
+        "src/web/features/gallery/DialogBusy.tsx",
+        "src/web/features/gallery/neighbours.ts",
+        "src/web/features/gallery/gridPlace.ts",
+        "src/web/features/gallery/Gallery.tsx"
+      ],
+      "file": "docs/features/audio-gallery/tasks/T5-extract-media-gallery-primitives.md",
+      "status": "done"
+    },
+    {
+      "id": "T6",
+      "title": "Extract the dialog stepping engine and frame from the image dialog",
+      "layer": "ui",
+      "deps": ["T5"],
+      "acs": ["AC-05", "AC-09", "AC-11", "AC-20"],
+      "dod": "`GenerationDialog.test.tsx`, `DialogViews.test.tsx`, `GenerationDialog.nfr.test.tsx`, `App.dialog.test.tsx` pass without edits; gate green",
+      "files_hint": [
+        "src/web/features/media-gallery/useDialogStepping.ts",
+        "src/web/features/media-gallery/DialogFrame.tsx",
+        "src/web/features/gallery/GenerationDialog.tsx"
+      ],
+      "file": "docs/features/audio-gallery/tasks/T6-extract-dialog-stepping-engine.md",
+      "status": "done"
+    },
+    {
+      "id": "T7",
+      "title": "Extract the notes card from the image Notes",
+      "layer": "ui",
+      "deps": ["T5"],
+      "acs": ["AC-07", "AC-08", "AC-20"],
+      "dod": "`Notes.test.tsx` and dialog tests pass without edits; gate green",
+      "files_hint": ["src/web/features/media-gallery/NotesCard.tsx", "src/web/features/gallery/Notes.tsx"],
+      "file": "docs/features/audio-gallery/tasks/T7-extract-notes-card.md",
+      "status": "done"
+    },
+    {
+      "id": "T8",
+      "title": "Add the recording detail route and let sections own their detail renderers",
+      "layer": "wiring",
+      "deps": [],
+      "acs": ["AC-06", "AC-20"],
+      "dod": "router + sections unit tests pass; all App tests pass without edits; gate green",
+      "files_hint": [
+        "src/web/lib/router.tsx",
+        "src/web/sections.tsx",
+        "src/web/App.tsx",
+        "src/web/lib/router.test.tsx",
+        "src/web/sections.test.tsx"
+      ],
+      "file": "docs/features/audio-gallery/tasks/T8-recording-route-and-section-detail.md",
+      "status": "done"
+    },
+    {
+      "id": "T9",
+      "title": "Coordinate playback app-wide so one recording plays at a time",
+      "layer": "ui",
+      "deps": ["T8"],
+      "acs": ["AC-02"],
+      "dod": "playback unit tests + Speech component tests pass; gate green",
+      "files_hint": [
+        "src/web/lib/playback.ts",
+        "src/web/lib/playback.test.ts",
+        "src/web/App.tsx",
+        "src/web/features/audio/SpeechPage.tsx",
+        "src/web/features/audio/SpeechResult.tsx"
+      ],
+      "file": "docs/features/audio-gallery/tasks/T9-app-wide-playback-coordinator.md",
+      "status": "done"
+    },
+    {
+      "id": "T10",
+      "title": "Add the audio gallery's API client, view parsing, query keys and cache patching",
+      "layer": "ui",
+      "deps": ["T3"],
+      "acs": ["AC-04", "AC-13", "AC-18"],
+      "dod": "unit tests pass; gate green",
+      "files_hint": [
+        "src/web/lib/api.ts",
+        "src/web/features/audio/queryKeys.ts",
+        "src/web/features/audio/gallery/audioGalleryView.ts",
+        "src/web/features/audio/gallery/queries.ts",
+        "src/web/features/audio/gallery/patchRecordings.ts",
+        "src/web/features/audio/gallery/useRecordingPendingCost.ts"
+      ],
+      "file": "docs/features/audio-gallery/tasks/T10-audio-gallery-client-and-queries.md",
+      "status": "done"
+    },
+    {
+      "id": "T11",
+      "title": "Build the Audio → Gallery section: grid, recording card, model choice and states",
+      "layer": "ui",
+      "deps": ["T5", "T8", "T9", "T10"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-04", "AC-13", "AC-15"],
+      "dod": "component tests for every SCR-02 state pass; 0 audio fetches before play (preload none); gate green",
+      "files_hint": [
+        "src/web/features/audio/gallery/AudioGallery.tsx",
+        "src/web/features/audio/gallery/RecordingCard.tsx",
+        "src/web/features/audio/gallery/AudioGalleryViews.tsx",
+        "src/web/sections.tsx",
+        "src/web/features/audio/gallery/AudioGallery.test.tsx"
+      ],
+      "file": "docs/features/audio-gallery/tasks/T11-audio-gallery-grid-and-card.md",
+      "status": "done"
+    },
+    {
+      "id": "T12",
+      "title": "Build the audio «By model» overview",
+      "layer": "ui",
+      "deps": ["T11"],
+      "acs": ["AC-14", "AC-21"],
+      "dod": "component tests pass; gate green",
+      "files_hint": [
+        "src/web/features/audio/gallery/AudioByModel.tsx",
+        "src/web/features/audio/gallery/AudioByModel.test.tsx"
+      ],
+      "file": "docs/features/audio-gallery/tasks/T12-audio-gallery-by-model.md",
+      "status": "done"
+    },
+    {
+      "id": "T13",
+      "title": "Build the recording dialog and page with notes, details and delete",
+      "layer": "ui",
+      "deps": ["T6", "T7", "T11"],
+      "acs": ["AC-05", "AC-06", "AC-07", "AC-08", "AC-09", "AC-11", "AC-12"],
+      "dod": "component tests for SCR-04/05/06/07 states pass; gate green",
+      "files_hint": [
+        "src/web/features/audio/gallery/RecordingDialog.tsx",
+        "src/web/features/audio/gallery/RecordingDetail.tsx",
+        "src/web/features/audio/gallery/RecordingNotes.tsx",
+        "src/web/features/audio/DeleteRecording.tsx",
+        "src/web/features/audio/gallery/RecordingDialog.test.tsx"
+      ],
+      "file": "docs/features/audio-gallery/tasks/T13-recording-dialog-and-page.md",
+      "status": "done"
+    },
+    {
+      "id": "T14",
+      "title": "Hand Reuse from the gallery to the Speech page",
+      "layer": "ui",
+      "deps": ["T10", "T13"],
+      "acs": ["AC-16", "AC-17"],
+      "dod": "SpeechPage tests (old + new) pass; gate green",
+      "files_hint": [
+        "src/web/features/audio/SpeechPage.tsx",
+        "src/web/features/audio/useSpeechDraft.ts",
+        "src/web/features/audio/gallery/reuse.ts",
+        "src/web/features/audio/SpeechPage.test.tsx"
+      ],
+      "file": "docs/features/audio-gallery/tasks/T14-reuse-into-speech.md",
+      "status": "done"
+    },
+    {
+      "id": "T15",
+      "title": "Prove cross-section coherence and the request budgets",
+      "layer": "tests",
+      "deps": ["T12", "T13", "T14"],
+      "acs": ["AC-02", "AC-18", "AC-20", "AC-21"],
+      "dod": "tests pass; gate green",
+      "files_hint": [
+        "src/web/features/audio/gallery/CrossContext.test.tsx",
+        "src/web/features/audio/gallery/Requests.nfr.test.tsx"
+      ],
+      "file": "docs/features/audio-gallery/tasks/T15-audio-gallery-cross-context-and-request-tests.md",
+      "status": "done"
+    },
+    {
+      "id": "T16",
+      "title": "Register the new components and update the architecture map",
+      "layer": "docs",
+      "deps": ["T15"],
+      "acs": ["AC-20"],
+      "dod": "docs updated; gate green",
+      "files_hint": ["docs/design-system.md", "docs/architecture-map.md"],
+      "file": "docs/features/audio-gallery/tasks/T16-register-components-and-map.md",
+      "status": "done"
+    }
+  ]
+}

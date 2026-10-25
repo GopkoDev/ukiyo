@@ -25,6 +25,7 @@ import {
 } from "../../../shared/generations";
 import { arrangeModels, hiddenSuitable, pickModel } from "../../../shared/model-groups";
 import type { ImageModel, ProviderId } from "../../../shared/providers";
+import { refreshBalances } from "../balances/balances";
 import { useModelPreferences } from "../models/preferences";
 import { type Attachment, InputImages } from "./InputImages";
 import { JOB_QUERY_KEY } from "./job";
@@ -408,6 +409,8 @@ export function GeneratePanel() {
   // When a generation finishes, the gallery has a new item.
   const lastStatus = useRef<Job["status"] | undefined>(undefined);
   useEffect(() => {
+    // Any end of a generation may have spent credit: the navigation bar's balances are read again (AC-13).
+    if (lastStatus.current === "running" && job?.status !== "running") refreshBalances(qc);
     if (lastStatus.current === "running" && job?.status === "succeeded") {
       qc.invalidateQueries({ queryKey: GALLERY_QUERY_KEY });
       qc.invalidateQueries({ queryKey: ["generation"] }); // a source's detail lists its new derived generation

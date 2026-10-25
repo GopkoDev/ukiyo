@@ -8,7 +8,7 @@ function Show() {
   const route = useRoute();
   return (
     <div>
-      <p>{route.name === "detail" ? `detail ${route.id}` : `page ${route.pathname}${route.search}`}</p>
+      <p>{route.name === "page" ? `page ${route.pathname}${route.search}` : `detail ${route.id}`}</p>
       <Link to="/generations/01ABC">open</Link>
     </div>
   );

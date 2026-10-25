@@ -16,7 +16,20 @@ import {
 import { HealthResponse } from "../../shared/health";
 import { ModelPreference, PreferencesResponse, type SetPreferenceRequest } from "../../shared/models";
 import { CostHistory, PriceResponse } from "../../shared/pricing";
-import { ModelsResponse, ProvidersResponse } from "../../shared/providers";
+import { BalanceResponse, ModelsResponse, ProvidersResponse } from "../../shared/providers";
+import {
+  Recording,
+  RecordingModelGroupsResponse,
+  RecordingPage,
+  SpeechModelsResponse,
+  type StartSpeechRequest,
+} from "../../shared/speech";
+import {
+  type CreatePresetRequest,
+  type UpdatePresetRequest,
+  VoicePreset,
+  VoicePresetsResponse,
+} from "../../shared/voice-presets";
 
 export class ApiError extends Error {
   constructor(
@@ -71,6 +84,9 @@ export const api = {
   },
   modelPreferences: (provider: string) =>
     request(PreferencesResponse, `/model-preferences?provider=${encodeURIComponent(provider)}`),
+  /** Speech-model preferences — kept apart from image ones (ADR-0054); written through `setModelPreference` with `kind: "speech"`. */
+  speechModelPreferences: (provider: string) =>
+    request(PreferencesResponse, `/model-preferences?provider=${encodeURIComponent(provider)}&kind=speech`),
   setModelPreference: (body: SetPreferenceRequest) =>
     request(ModelPreference, "/model-preferences", json("PATCH", body)),
   currentJob: () => request(CurrentJobResponse, "/generation-job"),
@@ -108,4 +124,38 @@ export const api = {
     request(TagsResponse, `/generations/${encodeURIComponent(id)}/tags/${encodeURIComponent(tag)}`, json("DELETE")),
   deleteGeneration: (id: string) => request(z.null(), `/generations/${encodeURIComponent(id)}`, json("DELETE")),
   generation: (id: string) => request(Generation, `/generations/${encodeURIComponent(id)}`),
+  speechModels: () => request(SpeechModelsResponse, "/audio/models"),
+  voicePresets: () => request(VoicePresetsResponse, "/audio/presets"),
+  voicePreset: (id: string) => request(VoicePreset, `/audio/presets/${encodeURIComponent(id)}`),
+  createVoicePreset: (body: CreatePresetRequest) => request(VoicePreset, "/audio/presets", json("POST", body)),
+  updateVoicePreset: (id: string, body: UpdatePresetRequest) =>
+    request(VoicePreset, `/audio/presets/${encodeURIComponent(id)}`, json("PATCH", body)),
+  deleteVoicePreset: (id: string) => request(z.null(), `/audio/presets/${encodeURIComponent(id)}`, json("DELETE")),
+  /** One provider's remaining credit; `remainingUsd: null` when it couldn't be read (ADR-0055). */
+  providerBalance: (providerId: string) =>
+    request(BalanceResponse, `/providers/${encodeURIComponent(providerId)}/balance`),
+  recordings: (cursor?: string, limit?: number, filter?: { model: string } | { preset: string }) => {
+    const q = new URLSearchParams();
+    if (filter && "model" in filter) q.set("model", filter.model);
+    if (filter && "preset" in filter) q.set("preset", filter.preset);
+    if (cursor) q.set("cursor", cursor);
+    if (limit !== undefined) q.set("limit", String(limit));
+    const qs = q.toString();
+    return request(RecordingPage, `/audio/recordings${qs ? `?${qs}` : ""}`);
+  },
+  recording: (id: string) => request(Recording, `/audio/recordings/${encodeURIComponent(id)}`),
+  createRecording: (body: StartSpeechRequest) => request(Recording, "/audio/recordings", json("POST", body)),
+  recordingModels: (latest: number) =>
+    request(RecordingModelGroupsResponse, `/audio/recordings/models?latest=${latest}`),
+  setRecordingComment: (id: string, body: string) =>
+    request(CommentResponse, `/audio/recordings/${encodeURIComponent(id)}/comment`, json("PUT", { body })),
+  addRecordingTag: (id: string, tag: string) =>
+    request(TagsResponse, `/audio/recordings/${encodeURIComponent(id)}/tags`, json("POST", { tag })),
+  removeRecordingTag: (id: string, tag: string) =>
+    request(
+      TagsResponse,
+      `/audio/recordings/${encodeURIComponent(id)}/tags/${encodeURIComponent(tag)}`,
+      json("DELETE"),
+    ),
+  deleteRecording: (id: string) => request(z.null(), `/audio/recordings/${encodeURIComponent(id)}`, json("DELETE")),
 };

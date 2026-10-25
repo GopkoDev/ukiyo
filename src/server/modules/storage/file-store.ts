@@ -10,6 +10,10 @@ const EXT: Record<string, string> = {
 };
 const STAGING = ".staging";
 const GENERATIONS = "generations";
+const AUDIO = "audio";
+const AUDIO_EXT: Record<string, string> = { "audio/mpeg": "mp3", "audio/wav": "wav" };
+/** `audio/<ulid>.<ext>` — the only shape a recording's file path may have. */
+const AUDIO_PATH = /^audio\/([0-9A-Z]{1,26})\.(mp3|wav)$/;
 
 export type StoredImageInput = { bytes: Uint8Array; mediaType: string };
 
@@ -23,6 +27,15 @@ export function createFileStore(dataDir: string) {
   const stagingDir = (id: string) => join(root, STAGING, id);
   const finalDir = (id: string) => join(root, GENERATIONS, id);
   mkdirSync(join(root, STAGING), { recursive: true });
+
+  /** A recording's file name, checked against the one allowed shape (defense in depth). */
+  function audioName(relPath: string): string {
+    if (!AUDIO_PATH.test(relPath)) throw new Error("Invalid audio file path");
+    return relPath.slice(AUDIO.length + 1);
+  }
+  const audioFinal = (relPath: string) => join(root, AUDIO, audioName(relPath));
+  const audioStaged = (relPath: string) => join(root, STAGING, `audio-${audioName(relPath)}`);
+  const audioTrash = (relPath: string) => `${audioStaged(relPath)}.deleted`;
 
   async function writeStaged(id: string, kind: "output" | "input", images: StoredImageInput[]): Promise<string[]> {
     const dir = stagingDir(id);
@@ -86,8 +99,64 @@ export function createFileStore(dataDir: string) {
       rmSync(join(root, STAGING, `${id}.deleted`), { recursive: true, force: true });
     },
 
-    /** Boot clean-up: drops leftover staging and any generation directory without a record. */
-    sweep(knownIds: Set<string>): void {
+    /**
+     * A recording's audio file (ADR-0042): written to `.staging/audio-<id>.<ext>`; returns its final path
+     * `audio/<id>.<ext>`, which becomes visible only through `commitAudioSync` inside the DB transaction.
+     */
+    async stageAudio(id: string, bytes: Uint8Array, mediaType: string): Promise<string> {
+      const ext = AUDIO_EXT[mediaType];
+      if (!ext) throw new Error(`Unsupported audio type: ${mediaType}`);
+      const relPath = `${AUDIO}/${id}.${ext}`;
+      await writeFile(audioStaged(relPath), bytes);
+      return relPath;
+    },
+
+    /** Moves a staged audio file into place. Synchronous so it can run inside a SQLite transaction. */
+    commitAudioSync(relPath: string): void {
+      const target = audioFinal(relPath);
+      if (existsSync(target)) throw new Error(`Audio file already exists: ${relPath}`);
+      mkdirSync(join(root, AUDIO), { recursive: true });
+      renameSync(audioStaged(relPath), target);
+    },
+
+    /** Removes everything written for a recording that will not be recorded. */
+    discardAudio(relPath: string): void {
+      rmSync(audioStaged(relPath), { force: true });
+      rmSync(audioFinal(relPath), { force: true });
+    },
+
+    /** Removes only the staged copy — a committed file with the same path may belong to another recording. */
+    discardStagedAudio(relPath: string): void {
+      rmSync(audioStaged(relPath), { force: true });
+    },
+
+    /** Deletion's file step: moves the file into staging as `<name>.deleted`, synchronously, inside the transaction. */
+    trashAudioSync(relPath: string): void {
+      const source = audioFinal(relPath);
+      if (!existsSync(source)) return;
+      rmSync(audioTrash(relPath), { force: true });
+      renameSync(source, audioTrash(relPath));
+    },
+
+    /** Undoes `trashAudioSync` when the deletion did not commit — the recording keeps its file. */
+    restoreAudioSync(relPath: string): void {
+      const trashed = audioTrash(relPath);
+      if (!existsSync(trashed) || existsSync(audioFinal(relPath))) return;
+      mkdirSync(join(root, AUDIO), { recursive: true });
+      renameSync(trashed, audioFinal(relPath));
+    },
+
+    /** Removes a deleted recording's file after the deletion committed (the boot sweep covers a crash). */
+    purgeAudio(relPath: string): void {
+      rmSync(audioTrash(relPath), { force: true });
+    },
+
+    /**
+     * Boot clean-up: restores interrupted deletions of recorded generations and recordings, drops the rest of
+     * staging and any generation directory without a record; with `knownRecordingIds`, also any audio file
+     * without a recording (ADR-0042 — one sweep, run once both repos exist).
+     */
+    sweep(knownIds: Set<string>, knownRecordingIds?: Set<string>): void {
       // A deletion that never committed (crash / failed COMMIT) left a recorded generation's files in staging: put them back.
       const staging = join(root, STAGING);
       if (existsSync(staging))
@@ -97,14 +166,22 @@ export function createFileStore(dataDir: string) {
             mkdirSync(join(root, GENERATIONS), { recursive: true });
             renameSync(join(staging, name), finalDir(id));
           }
+          const audio = /^audio-(([0-9A-Z]{1,26})\.(mp3|wav))\.deleted$/.exec(name);
+          if (audio?.[1] && audio[2] && knownRecordingIds?.has(audio[2])) this.restoreAudioSync(`${AUDIO}/${audio[1]}`);
         }
       rmSync(join(root, STAGING), { recursive: true, force: true });
       mkdirSync(join(root, STAGING), { recursive: true });
       const gens = join(root, GENERATIONS);
-      if (!existsSync(gens)) return;
-      for (const name of readdirSync(gens)) {
-        if (!knownIds.has(name)) rmSync(join(gens, name), { recursive: true, force: true });
-      }
+      if (existsSync(gens))
+        for (const name of readdirSync(gens)) {
+          if (!knownIds.has(name)) rmSync(join(gens, name), { recursive: true, force: true });
+        }
+      const audioDir = join(root, AUDIO);
+      if (knownRecordingIds && existsSync(audioDir))
+        for (const name of readdirSync(audioDir)) {
+          const id = name.split(".")[0] ?? "";
+          if (!knownRecordingIds.has(id)) rmSync(join(audioDir, name), { recursive: true, force: true });
+        }
     },
 
     /** Size of a recorded file, or `null` when it is gone — checked before reading (no 10 MB+ reads). */

@@ -1,6 +1,6 @@
 ---
 status: living
-updated_at: "2026-10-19"
+updated_at: "2026-10-25"
 ---
 
 # Roadmap — Ukiyo
@@ -13,7 +13,7 @@ updated_at: "2026-10-19"
 
 ## Destination
 
-The single owner, on one machine, generates images from text and/or input images through both OpenRouter and Vercel AI Gateway, and every result lives in a local gallery with enough metadata to re-run it, switch its model, or feed it into the next generation, organised by folder, model and prompt in a paged grid, with a curated model catalog one click away.
+The single owner, on one machine, generates images from text and/or input images through both OpenRouter and Vercel AI Gateway, and every result lives in a local gallery with enough metadata to re-run it, switch its model, or feed it into the next generation, organised by folder, model and prompt in a paged grid, with a curated model catalog one click away — and, in a separate Audio section, turns text into speech with any OpenRouter speech model, keeping every recording in its own gallery with reusable voice presets.
 
 ## Steps
 
@@ -36,6 +36,16 @@ The single owner, on one machine, generates images from text and/or input images
 | 15 | Folders — create a folder for an idea / test flow / job; the selected folder sticks in the generate panel so new generations land in it; one folder per generation, move between folders | owner request (V2) | M | idea |
 | 16 | Bulk generation — many generations from one submit (prompt × model × variants) | owner request (V3) | fog | idea |
 | 17 | Canvas image editor — edit an image on a canvas and feed the result back as an input | owner request (V3) | fog | idea |
+| 18 | Text to speech — the navigation splits into an Image and an Audio section; the Speech page is rebuilt on project conventions (speech adapter behind a port, file store, service/repo); every OpenRouter speech model with its own controls; audio rows + files with a cost status, estimated up front and reconciled later through the stored OpenRouter generation id | owner request (audio epic) | M | shipped → [`features/text-to-speech`](./features/text-to-speech/spec.md) |
+| 19 | Audio gallery — a paged gallery of audio cards with a player (price, text, model, voice, settings badges), a detail modal with ← →, tags, comments, delete, filter by model | owner request (audio epic) | M | shipped → [`features/audio-gallery`](./features/audio-gallery/spec.md) |
+| 20 | Models page with audio — Image \| Audio tabs; the audio table shows price, limits and voices, with ★ / hide like image models; + the remaining provider balance (OpenRouter /credits; Vercel AI Gateway if it exposes one, else «—») shown in the left navbar on every page, refreshed after each generation and on an interval (owner request 2026-10-25) | owner request (audio epic) | M | shipped → [`features/models-page-audio`](./features/models-page-audio/spec.md) |
+| 21 | Voice presets — save voice + model + settings under a name and reuse it; a «Voices» section in the Audio group lists the presets and every recording made with one | owner request (audio epic) | M | shipped → [`features/voice-presets`](./features/voice-presets/spec.md) |
+
+> **Audio prototype.** Commits `a1169a1` and `cbb9c47` on `feature/audio-generation` are a working
+> prototype (ElevenLabs only), not a step: step 18 reuses its UI and code where it fits and rewrites
+> the rest (gaps listed in [`architecture-map.md` §Constraints](./architecture-map.md)). Its migration
+> `0011_create_audio_generations` is already applied to the owner's data, so it counts as shipped —
+> schema changes go into new migrations.
 
 ## Not yet specified
 
@@ -72,6 +82,7 @@ Two V3 areas are in scope but not yet formulated: the owner has no flow for them
 - Both providers in v1 and all three modes; «reproduce» means resending the same inputs → [`idea-brief.md §7`](./idea-brief.md)
 - API keys live server-only in `.env.local`; the server binds `127.0.0.1` → [`architecture-map.md` Conventions](./architecture-map.md)
 - Vercel image-only and chat-modalities paths are one step; re-run and use-as-input are one step → this roadmap (owner review)
+- Audio epic: image and audio stay separate modules and tables (no unified «media» rewrite); speech goes through its own adapter port in `providers/`; all audio steps land on `feature/audio-generation` as one PR → this roadmap (owner request)
 - V2 scope: «by model» means both a filter and a group view; a generation belongs to one folder at most; the «model resets after a generation» bug goes through `/sdd:fix`, not a roadmap step → this roadmap (owner review)
 
 ## Dependency graph
@@ -95,6 +106,12 @@ flowchart LR
   s14 -->|folder view reuses the grid with its filters| s15
   s16["16 · Bulk generation (fog)"]
   s17["17 · Canvas editor (fog)"]
+  s8 -->|Audio is a new sidebar group of routed sections| s18["18 · Text to speech"]
+  s18 -->|audio rows, files and the Audio nav group to list them under| s19["19 · Audio gallery"]
+  s18 -->|speech model catalog from the speech adapter| s20["20 · Models page with audio"]
+  s10 -->|Models page and per-model preference store to extend| s20
+  s18 -->|a preset stores the voice, model and settings a request takes| s21["21 · Voice presets"]
+  s19 -->|a preset's page lists its recordings with the gallery cards| s21
 ```
 
 ## Execution path
@@ -112,7 +129,10 @@ flowchart LR
 | 9 | 12 | `src/web/features/gallery/` detail modal. Alone because 13 edits the same gallery view | — |
 | 10 | 13 | `src/web/features/gallery/` + `src/server/modules/generations/` list query | 14 |
 | 11 | 14 | `src/web/features/gallery/` + `src/server/modules/generations/` (prompt-group key) | 15 |
-| 12 | 15 | `src/server/modules/folders/` (new) + `src/web/features/folders/` (new) + `src/web/features/generate/` folder picker | — |
+| 12 | 18 | `src/server/modules/audio/` + `src/server/modules/providers/` speech adapter (new) + `src/web/features/audio/` + `src/web/sections.tsx` / `src/web/components/app-sidebar.tsx` (nav groups). The owner's current priority, so it goes before step 15; both edit the navigation, so they don't share a wave | 19, 20, 21 |
+| 13 | 19 ∥ 20 | 19: `src/server/modules/audio/` list + curation tables + `src/web/features/audio/` gallery · 20: `src/web/features/models/` tabs + `src/server/modules/models/` (audio preferences) + the balance in `src/web/components/app-sidebar.tsx` and a credits read in `src/server/modules/providers/`. Disjoint modules (19 edits `sections.tsx`, not the sidebar component); 20 reads the speech catalog and the credits read step 18 ships | 21 |
+| 14 | 21 | `src/server/modules/audio/` presets (new table) + `src/web/features/audio/` save button and Voices section | — |
+| 15 | 15 | `src/server/modules/folders/` (new) + `src/web/features/folders/` (new) + `src/web/features/generate/` folder picker | — |
 | — | 16, 17 | fog: waved once their recon pass sizes them | — |
 
 ## Shipped
@@ -125,10 +145,14 @@ flowchart LR
 | 5 · Curate the gallery | 2026-10-18 | [changelog](./features/curate-gallery/CHANGELOG.md) · merged into `main` (fast-forward from `feature/curate-gallery`), independent review passed |
 | 6 · Re-run & reuse | 2026-10-18 | [changelog](./features/rerun-and-reuse/CHANGELOG.md) · merged into `main` (fast-forward from `feature/rerun-and-reuse`), independent review passed |
 | 7 · Model price preview | 2026-10-18 | [changelog](./features/model-price-preview/CHANGELOG.md) · merged into `main` (fast-forward from `feature/model-price-preview`), independent review passed |
-| 8 · App shell | 2026-10-18 | [changelog](./features/app-shell/CHANGELOG.md) · on `feature/app-shell`, independent review passed (findings fixed); amended 2026-10-19 (sidebar-08 shell, theme, recent strip) — [PR #1](https://github.com/GopkoDev/ukiyo/pull/1), awaiting merge |
-| 9 · Model picker preferences | 2026-10-19 | [changelog](./features/model-picker-preferences/CHANGELOG.md) · on `feature/model-picker-preferences` (branched from `feature/app-shell`), independent review passed (findings fixed) — PR stacked on PR #1, awaiting merge |
-| 10 · Models page | 2026-10-19 | [changelog](./features/models-page/CHANGELOG.md) · on `feature/models-page` (branched from `feature/model-picker-preferences`), independent review passed (findings fixed) — PR stacked on step 9, awaiting merge |
-| 11 · Gallery grid | 2026-10-19 | [changelog](./features/gallery-grid/CHANGELOG.md) · on `feature/gallery-grid` (branched from `feature/models-page`), independent review passed (findings fixed) — PR stacked on step 10, awaiting merge |
-| 12 · Generation detail as a modal | 2026-10-19 | [changelog](./features/generation-detail-modal/CHANGELOG.md) · on `feature/generation-detail-modal` (branched from `feature/gallery-grid`), independent review passed (findings fixed) — PR stacked on step 11, awaiting merge |
-| 13 · Gallery by model | 2026-10-19 | [changelog](./features/gallery-by-model/CHANGELOG.md) · on `feature/gallery-by-model` (branched from `feature/generation-detail-modal`), independent review passed (findings fixed) — PR stacked on step 12, awaiting merge |
-| 14 · Gallery by prompt | 2026-10-19 | [changelog](./features/gallery-by-prompt/CHANGELOG.md) · on `feature/gallery-by-prompt` (branched from `feature/gallery-by-model`), independent review passed (findings fixed) — PR stacked on step 13, awaiting merge |
+| 8 · App shell | 2026-10-18 | [changelog](./features/app-shell/CHANGELOG.md) · on `feature/app-shell`, independent review passed (findings fixed); amended 2026-10-19 (sidebar-08 shell, theme, recent strip) — [PR #1](https://github.com/GopkoDev/ukiyo/pull/1), merged |
+| 9 · Model picker preferences | 2026-10-19 | [changelog](./features/model-picker-preferences/CHANGELOG.md) · on `feature/model-picker-preferences` (branched from `feature/app-shell`), independent review passed (findings fixed) — [PR #2](https://github.com/GopkoDev/ukiyo/pull/2), merged into `main` |
+| 10 · Models page | 2026-10-19 | [changelog](./features/models-page/CHANGELOG.md) · on `feature/models-page` (branched from `feature/model-picker-preferences`), independent review passed (findings fixed) — [PR #3](https://github.com/GopkoDev/ukiyo/pull/3), merged into `main` |
+| 11 · Gallery grid | 2026-10-19 | [changelog](./features/gallery-grid/CHANGELOG.md) · on `feature/gallery-grid` (branched from `feature/models-page`), independent review passed (findings fixed) — [PR #4](https://github.com/GopkoDev/ukiyo/pull/4), merged into `main` |
+| 12 · Generation detail as a modal | 2026-10-19 | [changelog](./features/generation-detail-modal/CHANGELOG.md) · on `feature/generation-detail-modal` (branched from `feature/gallery-grid`), independent review passed (findings fixed) — [PR #5](https://github.com/GopkoDev/ukiyo/pull/5), merged into `main` |
+| 13 · Gallery by model | 2026-10-19 | [changelog](./features/gallery-by-model/CHANGELOG.md) · on `feature/gallery-by-model` (branched from `feature/generation-detail-modal`), independent review passed (findings fixed) — [PR #6](https://github.com/GopkoDev/ukiyo/pull/6), merged into `main` |
+| 14 · Gallery by prompt | 2026-10-19 | [changelog](./features/gallery-by-prompt/CHANGELOG.md) · on `feature/gallery-by-prompt` (branched from `feature/gallery-by-model`), independent review passed (findings fixed) — [PR #7](https://github.com/GopkoDev/ukiyo/pull/7), merged into `main` |
+| 18 · Text to speech | 2026-10-25 | [changelog](./features/text-to-speech/CHANGELOG.md) · on `feature/audio-generation` (audio epic, one PR for steps 18–21), independent review passed (findings fixed) — [PR #8](https://github.com/GopkoDev/ukiyo/pull/8), awaiting merge |
+| 19 · Audio gallery | 2026-10-25 | [changelog](./features/audio-gallery/CHANGELOG.md) · on `feature/audio-generation` (audio epic, one PR for steps 18–21), independent review passed (findings fixed) — [PR #8](https://github.com/GopkoDev/ukiyo/pull/8), awaiting merge |
+| 20 · Models page with audio | 2026-10-25 | [changelog](./features/models-page-audio/CHANGELOG.md) · on `feature/audio-generation` (audio epic, one PR for steps 18–21), independent review passed (findings fixed) — [PR #8](https://github.com/GopkoDev/ukiyo/pull/8), awaiting merge |
+| 21 · Voice presets | 2026-10-25 | [changelog](./features/voice-presets/CHANGELOG.md) · on `feature/audio-generation` (audio epic complete: steps 18–21 in one PR), independent review passed (findings fixed) — [PR #8](https://github.com/GopkoDev/ukiyo/pull/8), awaiting merge |

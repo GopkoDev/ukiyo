@@ -35,7 +35,8 @@ function setup(answers: (CostLookup | Error)[], withLookup = true) {
     },
     listPendingCosts: (): PendingCost[] => [],
   };
-  const sync = createCostSync({ repo, providers: registryOf([provider]) });
+  const providers = registryOf([provider]);
+  const sync = createCostSync({ repo, lookupFor: (id) => providers.get(id)?.lookupCost });
   return { sync, calls, resolved, repo };
 }
 
@@ -141,5 +142,33 @@ describe("cost resolver", () => {
     sync.stop();
     await vi.advanceTimersByTimeAsync(COST_DEADLINE_MS);
     expect(calls).toEqual([]);
+  });
+
+  it("runs a second, independent instance over another repo and lookup (recordings, ADR-0043)", async () => {
+    const resolved = new Map<string, number | null>();
+    const lookups: string[] = [];
+    const sync = createCostSync({
+      repo: {
+        resolveCost: (id, micros) => {
+          resolved.set(id, micros);
+          return true;
+        },
+        listPendingCosts: () => [],
+      },
+      lookupFor: (provider) =>
+        provider === "openrouter"
+          ? async (ref) => {
+              lookups.push(ref);
+              return { status: "known", costUsd: 0.00016 };
+            }
+          : undefined,
+    });
+    sync.track({ id: "R1", provider: "openrouter", costRef: "gen-tts-1", answeredAt: Date.now() });
+    sync.track({ id: "R2", provider: "elsewhere", costRef: "x", answeredAt: Date.now() });
+    expect(resolved.get("R2")).toBeNull(); // no lookup for that provider → unavailable at once
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(lookups).toEqual(["gen-tts-1"]);
+    expect(resolved.get("R1")).toBe(160);
+    sync.stop();
   });
 });

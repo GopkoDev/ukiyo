@@ -1,13 +1,21 @@
 import type { Hono } from "hono";
 import type { PriceResponse } from "../../../shared/pricing";
-import type { ModelsResponse, ProvidersResponse } from "../../../shared/providers";
+import type { BalanceResponse, ModelsResponse, ProvidersResponse } from "../../../shared/providers";
 import { AppError } from "../../lib/errors";
 import type { ModelCatalog } from "./catalog";
 import { ProviderError } from "./port";
 import type { PriceCatalog } from "./prices";
 import type { ProviderRegistry } from "./registry";
 
-export type ProvidersRouteDeps = { providers: ProviderRegistry; catalog: ModelCatalog; prices: PriceCatalog };
+export type ProvidersRouteDeps = {
+  providers: ProviderRegistry;
+  catalog: ModelCatalog;
+  prices: PriceCatalog;
+  /** Deadline of one balance read (default 10 s, spec §6). */
+  balanceTimeoutMs?: number;
+};
+
+export const BALANCE_TIMEOUT_MS = 10_000;
 
 export function providerAppError(err: ProviderError): AppError {
   return new AppError("PROVIDER_ERROR", err.message, 502, {
@@ -37,6 +45,24 @@ export function registerProvidersRoutes(app: Hono, deps: ProvidersRouteDeps) {
       if (err instanceof ProviderError) throw providerAppError(err);
       throw err;
     }
+  });
+
+  // One provider's remaining credit; a failed, late or unreadable read is `null` (ADR-0055) — never an error answer.
+  app.get("/providers/:providerId/balance", async (c) => {
+    const provider = deps.providers.get(c.req.param("providerId"));
+    if (!provider) throw new AppError("NOT_FOUND", `Unknown provider: ${c.req.param("providerId")}`, 404);
+    if (!provider.configured)
+      throw new AppError("PROVIDER_NOT_CONFIGURED", `${provider.name} is not configured`, 409, {
+        provider: provider.id,
+      });
+    let remainingUsd: number | null = null;
+    try {
+      remainingUsd =
+        (await provider.balance?.(AbortSignal.timeout(deps.balanceTimeoutMs ?? BALANCE_TIMEOUT_MS))) ?? null;
+    } catch (err) {
+      if (!(err instanceof ProviderError)) throw err;
+    }
+    return c.json({ provider: provider.id, remainingUsd } satisfies BalanceResponse);
   });
 
   app.get("/providers/:providerId/price", async (c) => {

@@ -1,9 +1,10 @@
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { seedGeneration } from "../../../../tests/helpers/generations";
+import { clearPromptKey, seedGeneration } from "../../../../tests/helpers/generations";
 import { createTestApp } from "../../../../tests/helpers/test-app";
 import { promptKey } from "./promptKey";
+import { createGenerationsRepo } from "./repo";
 
 // curate-gallery spec §6 NFRs, measured in-process (server time only).
 const p95 = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.ceil(xs.length * 0.95) - 1] ?? Number.NaN;
@@ -281,5 +282,29 @@ describe("gallery-by-prompt NFRs", () => {
     });
     expect(p95(groupRuns)).toBeLessThanOrEqual(300);
     expect(p95(pageRuns)).toBeLessThanOrEqual(300);
+  });
+});
+
+// gallery-by-prompt spec §6 — moved here from prompt-key.int.test.ts: a timing test runs in the serial nfr project.
+describe("prompt key backfill NFR", () => {
+  it("boot backfills 1 000 keyless generations within 2 s, then updates nothing", () => {
+    const t = createTestApp();
+    const keyOf = (id: string) => t.db.prepare("SELECT prompt_key FROM generations WHERE id = ?").pluck().get(id);
+    const ids = Array.from(
+      { length: 1000 },
+      (_, i) => seedGeneration(t.db, t.dataDir, { prompt: `prompt ${i % 300}` }).id,
+    );
+    for (const id of ids) clearPromptKey(t.db, id);
+
+    const start = performance.now();
+    t.restart();
+    expect(performance.now() - start).toBeLessThan(2000);
+
+    const nulls = t.db.prepare("SELECT count(*) FROM generations WHERE prompt_key IS NULL").pluck().get();
+    expect(nulls).toBe(0);
+    expect(keyOf(ids[5] as string)).toBe(promptKey("prompt 5"));
+
+    expect(createGenerationsRepo(t.db).backfillPromptKeys()).toBe(0);
+    t.cleanup();
   });
 });

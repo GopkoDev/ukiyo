@@ -8,6 +8,10 @@ export const ProvidersResponse = z.object({
 });
 export type ProvidersResponse = z.infer<typeof ProvidersResponse>;
 
+/** A provider's remaining credit in USD, as the provider reports it; `null` = it couldn't be read (ADR-0055). */
+export const BalanceResponse = z.strictObject({ provider: ProviderId, remainingUsd: z.number().nullable() });
+export type BalanceResponse = z.infer<typeof BalanceResponse>;
+
 /** An image model with only the optional parameters it supports — an absent key means unsupported. */
 export const ImageModel = z.object({
   id: z.string(),

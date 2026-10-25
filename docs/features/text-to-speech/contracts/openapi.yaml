@@ -1,0 +1,238 @@
+openapi: 3.1.0
+info:
+  title: Ukiyo — text-to-speech
+  version: 0.1.0
+  description: >
+    Roadmap step 18: the audio contract that replaces the prototype's `/api/audio` routes (the SPA is its only
+    client, shipped together). Speech models come from OpenRouter's catalog shaped by the family spec map
+    (ADR-0040); a recording is saved atomically with its audio file (ADR-0042) and carries a cost status plus
+    its up-front estimate (ADR-0043). Generation is synchronous (ADR-0045). Every /api route passes the
+    request guard (ADR-0007) — a foreign origin gets 403 FORBIDDEN (spec AC-19).
+servers:
+  - url: http://127.0.0.1:8787/api
+security: []  # no auth by design (single owner); the request guard replaces it
+paths:
+  /audio/models:
+    get:
+      operationId: listSpeechModels
+      summary: Every catalog speech model with its controls, voices, limit and pricing unit (AC-07, AC-09, AC-11, AC-12)
+      responses:
+        "200":
+          description: Cached ≤ 10 min per provider
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SpeechModelsResponse" }
+              example:
+                fetchedAt: "2026-10-25T10:00:00.000Z"
+                models:
+                  - id: elevenlabs/eleven-v3
+                    name: Eleven v3
+                    maker: ElevenLabs
+                    maxChars: 5000
+                    maxCharsSource: family
+                    voiceMode: required
+                    voices: [george, sarah]
+                    price: { unit: per-character, usdPerChar: 0.00008 }
+                    controls:
+                      - { key: stability, kind: steps, label: Stability, steps: [0, 0.5, 1], stepLabels: [Creative, Natural, Robust], default: 0.5 }
+                      - { key: similarity, kind: slider, label: Similarity, min: 0, max: 1, step: 0.01, default: 0.75, lowLabel: Low, highLabel: High }
+        "403": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+  /audio/credits:
+    get:
+      operationId: getSpeechCredits
+      summary: Remaining OpenRouter balance, or null when the key may not read it (AC-14)
+      responses:
+        "200":
+          description: Balance or null
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CreditsResponse" }
+              example: { remainingUsd: 12.5 }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /audio/recordings:
+    get:
+      operationId: listRecordings
+      summary: Recordings newest first (recent list = limit 10; step 19 pages with `cursor`) (AC-15, AC-18)
+      parameters:
+        - { name: cursor, in: query, required: false, schema: { type: string, pattern: "^[0-9A-Z]{1,26}$" }, description: "the id of the last recording shown" }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 10 } }
+      responses:
+        "200":
+          description: A page; `nextCursor` null on the last page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecordingPage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createRecording
+      summary: Generate speech and save the recording (AC-03, AC-04, AC-05, AC-06, AC-08, AC-09, AC-10, AC-13, AC-20)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StartSpeechRequest" }
+            example: { text: "Hello from Ukiyo.", model: elevenlabs/eleven-v3, voice: george, settings: { stability: 0.5, similarity: 0.75 } }
+      responses:
+        "201":
+          description: The saved recording; costStatus known (stated in the answer), pending (a generation id came back) or unavailable
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Recording" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+  /audio/recordings/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, pattern: "^[0-9A-Z]{26}$" } }
+    get:
+      operationId: getRecording
+      summary: One recording (pending-cost refresh; step 19 detail)
+      responses:
+        "200": { description: The recording, content: { application/json: { schema: { $ref: "#/components/schemas/Recording" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteRecording
+      summary: Delete the recording and its file together, no undo (AC-16)
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /audio/recordings/{id}/file:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, pattern: "^[0-9A-Z]{26}$" } }
+    get:
+      operationId: getRecordingFile
+      summary: The recording's audio (inline; `?download=1` adds an attachment disposition) (AC-03, AC-10, AC-15)
+      parameters:
+        - { name: download, in: query, required: false, schema: { type: string, enum: ["1"] } }
+      responses:
+        "200":
+          description: Audio bytes; immutable cache
+          content:
+            audio/mpeg: { schema: { type: string, format: binary } }
+            audio/wav: { schema: { type: string, format: binary } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+components:
+  responses:
+    Error:
+      description: >
+        VALIDATION_ERROR 400 (details.fields: text | model | voice | settings.<key>) · FORBIDDEN 403 ·
+        NOT_FOUND 404 · PROVIDER_NOT_CONFIGURED 409 (details.provider) · STORAGE_ERROR 500 («The audio arrived
+        but couldn't be saved — the provider may still charge for it») · PROVIDER_ERROR 502 (details.provider,
+        details.upstreamStatus; timeout message adds «the provider may still charge for it»)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example: { error: { code: VALIDATION_ERROR, message: "Eleven v3 takes at most 5 000 characters", details: { fields: { text: "At most 5 000 characters" } } } }
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, enum: [VALIDATION_ERROR, FORBIDDEN, NOT_FOUND, PROVIDER_NOT_CONFIGURED, STORAGE_ERROR, PROVIDER_ERROR] }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+    VoiceSettings:
+      description: Only the keys the chosen model accepts are sent and stored (audio_generations.settings JSON)
+      type: object
+      additionalProperties: false
+      properties:
+        speed: { type: number, minimum: 0.25, maximum: 4, description: "range per model control descriptor" }
+        stability: { type: number, minimum: 0, maximum: 1 }
+        similarity: { type: number, minimum: 0, maximum: 1 }
+        style: { type: number, minimum: 0, maximum: 1 }
+        speakerBoost: { type: boolean }
+        instructions: { type: string, maxLength: 1000, description: "delivery instructions; not billed characters" }
+    ControlKey: { type: string, enum: [speed, stability, similarity, style, speakerBoost, instructions] }
+    Control:
+      type: object
+      required: [key, kind, label]
+      properties:
+        key: { $ref: "#/components/schemas/ControlKey" }
+        kind: { type: string, enum: [slider, steps, switch, text] }
+        label: { type: string }
+        min: { type: number }
+        max: { type: number }
+        step: { type: number }
+        steps: { type: array, items: { type: number } }
+        stepLabels: { type: array, items: { type: string } }
+        default: { type: [number, boolean, string] }
+        lowLabel: { type: string }
+        highLabel: { type: string }
+        maxLength: { type: integer }
+    SpeechPrice:
+      type: object
+      required: [unit]
+      properties:
+        unit: { type: string, enum: [per-character, per-output, free, unknown] }
+        usdPerChar: { type: number, minimum: 0, description: "per-character only (catalog pricing.prompt)" }
+        outputLabel: { type: string, enum: ["per second of audio", "per token"], description: "per-output only (catalog pricing.completion > 0)" }
+    SpeechModel:
+      type: object
+      required: [id, name, maker, maxChars, maxCharsSource, voiceMode, voices, price, controls]
+      properties:
+        id: { type: string, maxLength: 100 }
+        name: { type: string, maxLength: 200 }
+        maker: { type: string, description: "group label in the model list (ElevenLabs first, then alphabetical)" }
+        maxChars: { type: integer, minimum: 1 }
+        maxCharsSource: { type: string, enum: [family, catalog, default], description: "default = 5 000, shown as «limit not published»" }
+        voiceMode: { type: string, enum: [required, optional], description: "optional = «provider default» allowed and a typed voice name accepted" }
+        voices: { type: array, items: { type: string } }
+        price: { $ref: "#/components/schemas/SpeechPrice" }
+        controls: { type: array, items: { $ref: "#/components/schemas/Control" } }
+    SpeechModelsResponse:
+      type: object
+      required: [models, fetchedAt]
+      properties:
+        models: { type: array, items: { $ref: "#/components/schemas/SpeechModel" } }
+        fetchedAt: { type: string, format: date-time }
+    CreditsResponse:
+      type: [object, "null"]
+      required: [remainingUsd]
+      properties:
+        remainingUsd: { type: number }
+    StartSpeechRequest:
+      type: object
+      required: [text, model]
+      properties:
+        text: { type: string, minLength: 1, maxLength: 40000, description: "trimmed; billed characters = code points of the trimmed text, ≤ the model's maxChars" }
+        model: { type: string, minLength: 1, maxLength: 100 }
+        voice: { type: [string, "null"], minLength: 1, maxLength: 100, description: "null/absent = provider default (voiceMode optional only)" }
+        settings: { $ref: "#/components/schemas/VoiceSettings" }
+    Recording:
+      type: object
+      required: [id, createdAt, provider, model, modelName, voice, text, settings, mediaType, characters, costMicros, costStatus, estimateMicros, durationMs, url]
+      properties:
+        id: { type: string }
+        createdAt: { type: string, format: date-time }
+        provider: { type: string }
+        model: { type: string }
+        modelName: { type: string, description: "stored catalog name, else the current catalog name, else the id" }
+        voice: { type: [string, "null"], description: "null = provider default" }
+        text: { type: string }
+        settings: { $ref: "#/components/schemas/VoiceSettings" }
+        mediaType: { type: string, enum: [audio/mpeg, audio/wav] }
+        characters: { type: integer, minimum: 0 }
+        costMicros: { type: [integer, "null"], minimum: 0 }
+        costStatus: { type: string, enum: [known, pending, unavailable] }
+        estimateMicros: { type: [integer, "null"], minimum: 0 }
+        durationMs: { type: [integer, "null"], minimum: 0 }
+        url: { type: string, description: "/api/audio/recordings/{id}/file" }
+    RecordingPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/Recording" } }
+        nextCursor: { type: [string, "null"] }

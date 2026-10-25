@@ -69,6 +69,8 @@ function toModel(entry: z.infer<typeof CatalogEntry>): ImageModel {
   return { id: entry.id, name: entry.name ?? entry.id, params };
 }
 
+const Credits = z.looseObject({ data: z.looseObject({ total_credits: z.number(), total_usage: z.number() }) });
+
 export function createOpenRouterProvider(opts: { apiKey: string | undefined; fetch: typeof fetch }): ImageProvider {
   const fail = (status: number | null, message: string) => new ProviderError("openrouter", status, message);
 
@@ -94,6 +96,16 @@ export function createOpenRouterProvider(opts: { apiKey: string | undefined; fet
     id: "openrouter",
     name: "OpenRouter",
     configured: Boolean(opts.apiKey),
+
+    async balance(signal) {
+      // The key's account credits (same read as step 18's speech line): purchased minus used (ADR-0055).
+      const parsed = Credits.safeParse(
+        await call(`${BASE}/credits`, { headers: { authorization: `Bearer ${opts.apiKey}` }, signal }),
+      );
+      const left = parsed.success ? parsed.data.data.total_credits - parsed.data.data.total_usage : Number.NaN;
+      if (!Number.isFinite(left)) throw fail(null, "OpenRouter answered credits Ukiyo can't read");
+      return left;
+    },
 
     async priceOf(modelId, signal) {
       // Public listing — no key (ADR-0020). Each part of the id is encoded; ids come from the catalog (prices.ts).

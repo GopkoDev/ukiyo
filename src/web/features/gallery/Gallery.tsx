@@ -1,16 +1,16 @@
 import { infiniteQueryOptions, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { isDialogVisit, Link, replace, useRoute } from "@/lib/router";
 import type { GenerationPage } from "../../../shared/generations";
+import { SENTINEL_MARGIN, usePagingSentinel } from "../media-gallery/usePagingSentinel";
 import { ByModel } from "./ByModel";
 import { ByPrompt } from "./ByPrompt";
 import { showView } from "./GalleryViews";
 import { clearGalleryNotice, useGalleryNotice } from "./galleryNotice";
 import { type GalleryView, viewKey } from "./galleryView";
-import { isOwnScroll } from "./gridPlace";
 import { modelsQueryOptions, providerName } from "./modelsQuery";
 import { isNotFound, PromptHeading, PromptUnknown, usePromptGroup } from "./PromptView";
 import { resetGalleryScroll, useSavedScroll } from "./scrollMemory";
@@ -21,7 +21,7 @@ import { useGalleryView } from "./useGalleryView";
 export type ListView = Exclude<GalleryView, { kind: "models" | "prompts" }>;
 
 export const GALLERY_QUERY_KEY = ["generations"] as const;
-export const SENTINEL_MARGIN = "600px";
+export { SENTINEL_MARGIN };
 
 /**
  * The grid's list query. The dialog (a sibling of the grid in App) reads the very same cache entry with these
@@ -73,27 +73,16 @@ function Grid({ view }: { view: ListView }) {
   useEffect(() => clearGalleryNotice, []);
   const prompt = view.kind === "prompt" ? view : undefined;
   const group = usePromptGroup(prompt?.key ?? "", prompt !== undefined);
-  const sentinelRef = useRef<HTMLDivElement>(null);
   const q = useInfiniteQuery(galleryQueryOptionsFor(view));
   // While the dialog is open the grid loads nothing by itself; after it closes the sentinel is re-armed by the
   // Owner's next scroll (never by the scroll that brought the last shown card into view).
   const paused = isDialogVisit(useRoute());
-  const [armed, setArmed] = useState(true);
   useEffect(() => {
     if (!paused) return;
-    setArmed(false);
     // A notice belongs to the visit that showed it: it does not wait for a later dialog to be closed.
     setJustDeleted(false);
     clearGalleryNotice();
   }, [paused]);
-  useEffect(() => {
-    if (paused || armed) return;
-    const onScroll = () => {
-      if (isOwnScroll()) setArmed(true);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [paused, armed]);
 
   const ready = q.data !== undefined;
   const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage } = q;
@@ -102,19 +91,14 @@ function Grid({ view }: { view: ListView }) {
 
   // Armed only while a request is allowed: more pages, nothing in flight (a full refresh included: paging would
   // cancel it), the last one not failed (no auto retry).
-  const canLoadMore = ready && !paused && armed && hasNextPage && !q.isFetching && !isFetchNextPageError;
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!canLoadMore || !el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) fetchNextPage();
-      },
-      { rootMargin: SENTINEL_MARGIN },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [canLoadMore, fetchNextPage]);
+  const { sentinelRef } = usePagingSentinel({
+    ready,
+    paused,
+    hasNextPage,
+    isFetching: q.isFetching,
+    isFetchNextPageError,
+    fetchNextPage,
+  });
 
   if (q.isPending) return <p className="text-muted-foreground text-sm">Loading…</p>;
   if (q.isError && !q.data)

@@ -1,0 +1,140 @@
+{
+  "slug": "voice-presets",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Promote the voice-presets migration and test it",
+      "layer": "migration",
+      "deps": [],
+      "acs": ["AC-08"],
+      "dod": "0016 up/down promoted unchanged from staging; migrate.int.test.ts lists 0016; test: over 0015 with recordings + tags + comments, 0016 applies with rows unchanged and unlinked, the link cascades both ways, rollback drops only the new tables; gate green",
+      "files_hint": [
+        "docs/features/voice-presets/migrations/",
+        "migrations/",
+        "src/server/db/migrate.int.test.ts",
+        "src/server/modules/audio/presets-migration.int.test.ts"
+      ],
+      "file": "docs/features/voice-presets/tasks/T1-promote-the-voice-presets-migration-and-test-it.md",
+      "status": "done"
+    },
+    {
+      "id": "T2",
+      "title": "Shared voice-preset schemas, name rules and presetMatches",
+      "layer": "domain",
+      "deps": [],
+      "acs": ["AC-02", "AC-05", "AC-09", "AC-10", "AC-12"],
+      "dod": "src/shared/voice-presets.ts: VoicePreset/Stats/Responses/Create/Update schemas, presetName (trim, 1–60 graphemes via Intl.Segmenter, nameKey = toLowerCase), presetMatches(preset, setup, model) (settingsFor + key-order-free deep equal, null voice only equals null), presetAvailability(preset, models|undefined) → ok | retired | loading, presetCostText(stats); unit tests for each; gate green",
+      "files_hint": ["src/shared/voice-presets.ts", "src/shared/voice-presets.test.ts"],
+      "file": "docs/features/voice-presets/tasks/T2-shared-voice-preset-schemas-name-rules-and-presetmatches.md",
+      "status": "done"
+    },
+    {
+      "id": "T3",
+      "title": "Presets repo, service and routes with stats",
+      "layer": "app",
+      "deps": ["T1", "T2"],
+      "acs": ["AC-01", "AC-02", "AC-06", "AC-07", "AC-11", "AC-12", "AC-17"],
+      "dod": "presets-repo.ts (CRUD, stats aggregate by name_key, unique clash → VALIDATION_ERROR fields.name), service operations (setup validated against catalog via peek() then fetch, settingsFor, checkVoice; rename without catalog), routes GET/POST /audio/presets, GET/PATCH/DELETE /audio/presets/:id wired in createApp; integration tests incl. foreign origin; gate green",
+      "files_hint": [
+        "src/server/modules/audio/presets-repo.ts",
+        "src/server/modules/audio/service.ts",
+        "src/server/modules/audio/routes.ts",
+        "src/server/app.ts",
+        "src/server/modules/audio/presets.int.test.ts"
+      ],
+      "file": "docs/features/voice-presets/tasks/T3-presets-repo-service-and-routes-with-stats.md",
+      "status": "done"
+    },
+    {
+      "id": "T4",
+      "title": "Link recordings to presets and list a preset's recordings",
+      "layer": "app",
+      "deps": ["T3"],
+      "acs": ["AC-04", "AC-05", "AC-08", "AC-13", "AC-16", "AC-18"],
+      "dod": "StartSpeechRequest.presetId + Recording.preset; start() compares with presetMatches at receipt and inserts the link inside the save transaction only if the preset still exists; never refuses; GET /audio/recordings?preset= (exclusive with model); every Recording DTO carries preset {id,name}|null; integration tests (match, differs, unknown, deleted mid-request, preset delete keeps recordings, recording delete drops link, no extra provider call); gate green",
+      "files_hint": [
+        "src/shared/speech.ts",
+        "src/server/modules/audio/repo.ts",
+        "src/server/modules/audio/presets-repo.ts",
+        "src/server/modules/audio/service.ts",
+        "src/server/modules/audio/routes.ts",
+        "src/server/modules/audio/presets-link.int.test.ts"
+      ],
+      "file": "docs/features/voice-presets/tasks/T4-link-recordings-to-presets-and-list-a-presets-recordings.md",
+      "status": "done"
+    },
+    {
+      "id": "T5",
+      "title": "Preset server timing NFRs",
+      "layer": "tests",
+      "deps": ["T4"],
+      "acs": ["AC-11", "AC-13"],
+      "dod": "nfr test: 200 presets × 5 000 recordings list ≤ 100 ms p95 without provider call; preset page ≤ 100 ms p95; save/update/rename/delete ≤ 50 ms p95 with a stale catalog entry; gate green",
+      "files_hint": ["src/server/modules/audio/presets.nfr.int.test.ts"],
+      "file": "docs/features/voice-presets/tasks/T5-preset-server-timing-nfrs.md",
+      "status": "done"
+    },
+    {
+      "id": "T6",
+      "title": "Typed client, Voices section and routing (ADR-0059, ADR-0060)",
+      "layer": "wiring",
+      "deps": ["T4"],
+      "acs": ["AC-11", "AC-13"],
+      "dod": "api.ts preset calls + recordings({preset}); preset queries/keys; sections: voices section (Audio order Speech, Gallery, Voices, Models; owns /audio/voices/<id> and its dialog visits; detail Recording); DIALOG_OF lists both galleries; alias redirect only for declared aliases (trimmed); RecordingDialog reads its gallery from state; useAudioGalleryView ignores Voices dialogs; preset AudioListView kind; tests (sectionFor owners, /speech + /speech/ redirect, /audio/voices/<id> kept); gate green",
+      "files_hint": [
+        "src/web/lib/api.ts",
+        "src/web/lib/router.tsx",
+        "src/web/App.tsx",
+        "src/web/sections.tsx",
+        "src/web/sections.test.tsx",
+        "src/web/features/audio/presets/queries.ts",
+        "src/web/features/audio/gallery/"
+      ],
+      "file": "docs/features/voice-presets/tasks/T6-client-voices-section-and-routing.md",
+      "status": "done"
+    },
+    {
+      "id": "T7",
+      "title": "Speech page preset row: save, apply, modified, detach, rename, delete",
+      "layer": "ui",
+      "deps": ["T6"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-05", "AC-06", "AC-07", "AC-09", "AC-10", "AC-14", "AC-15", "AC-19"],
+      "dod": "SCR-01/02/03/07 built: PresetSelect + Save/Rename/Delete dialogs; useSpeechDraft.apply; applied/modified/detach; presetId sent only when unchanged; ?preset= arrival; reuse re-applies a matching preset; voice-presets invalidated after a recording; component tests per test-plan rows; gate green",
+      "files_hint": [
+        "src/web/features/audio/presets/",
+        "src/web/features/audio/useSpeechDraft.ts",
+        "src/web/features/audio/SpeechPage.tsx",
+        "src/web/features/audio/SpeechPresets.test.tsx"
+      ],
+      "file": "docs/features/voice-presets/tasks/T7-speech-page-preset-row-save-apply-modified-detach.md",
+      "status": "done"
+    },
+    {
+      "id": "T8",
+      "title": "Voices list, preset page and the recording's preset row",
+      "layer": "ui",
+      "deps": ["T6"],
+      "acs": ["AC-04", "AC-07", "AC-09", "AC-11", "AC-12", "AC-13", "AC-14", "AC-16", "AC-19"],
+      "dod": "SCR-04/05/06 built: VoicesPage (PresetCard grid, empty/error), PresetPage (header + RecordingCard grid with paging, dialog over it stepping within the preset, gone/error states, Apply/Rename/Delete), RecordingDetail «Voice preset» row; patchRecordings remove invalidates voice-presets; component tests; gate green",
+      "files_hint": [
+        "src/web/features/audio/presets/",
+        "src/web/features/audio/gallery/RecordingDetail.tsx",
+        "src/web/features/audio/gallery/patchRecordings.ts",
+        "src/web/features/audio/presets/Voices.test.tsx"
+      ],
+      "file": "docs/features/voice-presets/tasks/T8-voices-list-preset-page-and-recording-preset-row.md",
+      "status": "done"
+    },
+    {
+      "id": "T9",
+      "title": "Architecture map and design-system inventory",
+      "layer": "docs",
+      "deps": ["T7", "T8"],
+      "acs": ["AC-11"],
+      "dod": "architecture-map (audio module presets, migrations 0001–0016, sections incl. Voices, ADR-0057…0060) and design-system inventory (PresetSelect, dialogs, PresetCard, VoicesPage, PresetPage) updated; tasks marked done",
+      "files_hint": ["docs/architecture-map.md", "docs/design-system.md", "docs/features/voice-presets/tasks/"],
+      "file": "docs/features/voice-presets/tasks/T9-docs-architecture-map-and-design-system-inventory.md",
+      "status": "done"
+    }
+  ]
+}

@@ -14,11 +14,12 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { ProviderBalances } from "@/features/balances/ProviderBalances";
 import { api } from "@/lib/api";
 import { Link } from "@/lib/router";
-import type { Section } from "@/sections";
+import { groupOf, SECTION_GROUPS, type Section } from "@/sections";
 
-/** SCR-04 — the kit's `sidebar-08` block trimmed to Ukiyo: brand, one entry per section, footer (ADR-0022). */
+/** SCR-04 — the kit's `sidebar-08` block trimmed to Ukiyo: brand, one group per section group (Image, Audio), footer (ADR-0022, ADR-0046). */
 export function AppSidebar({ sections, current }: { sections: readonly Section[]; current: Section | undefined }) {
   const health = useQuery({ queryKey: ["health"], queryFn: api.health });
   const label = health.isPending ? "checking…" : health.isSuccess ? "server ok" : "server unreachable";
@@ -48,36 +49,50 @@ export function AppSidebar({ sections, current }: { sections: readonly Section[]
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Sections</SidebarGroupLabel>
-          <nav aria-label="Sections">
-            <SidebarMenu>
-              {sections.map((s) => {
-                const Icon = s.icon;
-                const Indicator = s.indicator;
-                const isCurrent = s === current;
-                return (
-                  <SidebarMenuItem key={s.id} className="relative">
-                    <SidebarMenuButton asChild isActive={isCurrent} tooltip={s.label}>
-                      <Link to={s.path} aria-current={isCurrent ? "page" : undefined} onClick={close}>
-                        <Icon aria-hidden />
-                        <span>{s.label}</span>
-                        {Indicator && (
-                          // Collapsed to the icon rail, the indicator sits on the icon's corner instead of after the label.
-                          <span className="ml-auto flex items-center group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:top-0.5 group-data-[collapsible=icon]:right-0.5 group-data-[collapsible=icon]:[&_svg]:size-3">
-                            <Indicator />
-                          </span>
-                        )}
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </nav>
-        </SidebarGroup>
+        <nav aria-label="Sections">
+          {SECTION_GROUPS.map((group) => {
+            const entries = sections.filter((s) => groupOf(s) === group.id);
+            if (entries.length === 0) return null;
+            return (
+              <SidebarGroup key={group.id} role="group" aria-label={group.label}>
+                <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                <SidebarMenu>
+                  {entries.map((s) => {
+                    const Icon = s.icon;
+                    const Indicator = s.indicator;
+                    const isCurrent = s === current;
+                    return (
+                      <SidebarMenuItem key={s.id} className="relative">
+                        <SidebarMenuButton asChild isActive={isCurrent} tooltip={s.label}>
+                          <Link
+                            to={s.path}
+                            aria-current={isCurrent ? "page" : undefined}
+                            aria-label={s.accessibleName}
+                            onClick={close}
+                          >
+                            <Icon aria-hidden />
+                            <span>{s.label}</span>
+                            {Indicator && (
+                              // Collapsed to the icon rail, the indicator sits on the icon's corner instead of after the label.
+                              <span className="ml-auto flex items-center group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:top-0.5 group-data-[collapsible=icon]:right-0.5 group-data-[collapsible=icon]:[&_svg]:size-3">
+                                <Indicator />
+                              </span>
+                            )}
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroup>
+            );
+          })}
+        </nav>
       </SidebarContent>
       <SidebarFooter className="flex-row flex-wrap items-center group-data-[collapsible=icon]:flex-col">
+        <div className="w-full">
+          <ProviderBalances />
+        </div>
         <ModeToggle />
         <Badge
           variant={health.isError ? "destructive" : "secondary"}

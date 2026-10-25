@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ModelPreference } from "../../../shared/models";
+import { ModelPreference, type PreferenceKind } from "../../../shared/models";
 import type { ProviderId } from "../../../shared/providers";
 import type { Db } from "../../db/client";
 
@@ -24,14 +24,20 @@ const Row = z
 
 export type PreferenceFlags = { favorite?: boolean; hidden?: boolean };
 
-export function createModelsRepo(db: Db, now: () => number = Date.now) {
-  const listStmt = db.prepare("SELECT * FROM model_preferences WHERE provider = ? ORDER BY model");
-  const getStmt = db.prepare("SELECT * FROM model_preferences WHERE provider = ? AND model = ?");
+const TABLES: Record<PreferenceKind, string> = {
+  image: "model_preferences",
+  speech: "speech_model_preferences", // kept apart from image preferences (ADR-0054)
+};
+
+/** One kind's preference store — image models in `model_preferences`, speech models in their own table. */
+function createPreferenceStore(db: Db, table: string, now: () => number) {
+  const listStmt = db.prepare(`SELECT * FROM ${table} WHERE provider = ? ORDER BY model`);
+  const getStmt = db.prepare(`SELECT * FROM ${table} WHERE provider = ? AND model = ?`);
   const upsertStmt = db.prepare(
-    `INSERT INTO model_preferences (provider, model, favorite, hidden, updated_at) VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO ${table} (provider, model, favorite, hidden, updated_at) VALUES (?, ?, ?, ?, ?)
      ON CONFLICT (provider, model) DO UPDATE SET favorite = excluded.favorite, hidden = excluded.hidden, updated_at = excluded.updated_at`,
   );
-  const deleteStmt = db.prepare("DELETE FROM model_preferences WHERE provider = ? AND model = ?");
+  const deleteStmt = db.prepare(`DELETE FROM ${table} WHERE provider = ? AND model = ?`);
 
   return {
     list(provider: ProviderId): ModelPreference[] {
@@ -53,6 +59,17 @@ export function createModelsRepo(db: Db, now: () => number = Date.now) {
       return { provider, model, favorite, hidden, updatedAt };
     },
   };
+}
+
+export type PreferenceStore = ReturnType<typeof createPreferenceStore>;
+
+/** The image store's operations at the top level (step 9 callers), plus `kind()` for either store. */
+export function createModelsRepo(db: Db, now: () => number = Date.now) {
+  const stores = {
+    image: createPreferenceStore(db, TABLES.image, now),
+    speech: createPreferenceStore(db, TABLES.speech, now),
+  };
+  return { ...stores.image, kind: (k: PreferenceKind): PreferenceStore => stores[k] };
 }
 
 export type ModelsRepo = ReturnType<typeof createModelsRepo>;

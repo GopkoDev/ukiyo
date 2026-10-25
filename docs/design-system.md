@@ -3,7 +3,7 @@ status: Living
 tool: code               # figma | pencil | code — the single committed source of the design-tool choice (never sdd.local.md: that file is per-developer + gitignored)
 figma_file: ""           # tool: figma → the Figma file URL/key the canon lives in; else ""
 pen_file: ""             # tool: pencil → the .pen library path (e.g. docs/design/library.pen); else ""
-updated_at: "2026-10-19"
+updated_at: "2026-10-25"
 ---
 
 # Design system — Ukiyo
@@ -49,13 +49,36 @@ updated_at: "2026-10-19"
 | ModelsPage | `src/web/features/models/ModelsPage.tsx` | loading / default / price «…» and price states / hidden row / save failed (per row) / list error + Try again / not configured / none configured / preferences unreadable (toggles disabled) / no longer offered + Forget (failed) | SCR-08, the `/models` section: a Card + Table per provider |
 | Textarea | `src/web/components/ui/textarea.tsx:17` | default / focus / disabled / invalid (`aria-invalid`) | prompt entry |
 | Sidebar (block `sidebar-08`, inset variant) | `src/web/components/ui/sidebar.tsx` | expanded / collapsed (icon rail, `Ctrl/⌘+B` or the trigger) / mobile sheet (below `md`) | the app frame's primitives: `SidebarProvider`, `Sidebar`, `SidebarInset`, `SidebarTrigger`, `SidebarMenu*` |
-| AppSidebar | `src/web/components/app-sidebar.tsx` | default / current entry (`isActive` + `aria-current`) / section indicator (generation running, failed) / collapsed (tooltips) | brand + one entry per `SECTIONS` item + footer (theme toggle, server status); no demo user/teams/projects |
+| AppSidebar | `src/web/components/app-sidebar.tsx` | default / current entry (`isActive` + `aria-current`) / section indicator (generation running, failed) / collapsed (tooltips) | brand + one labelled group per section group («Image», then «Audio», ADR-0046) inside one «Sections» nav + footer (provider balances, theme toggle, server status); no demo user/teams/projects |
 | ModeToggle | `src/web/components/mode-toggle.tsx` | light / dark / system (DropdownMenu) | in the sidebar footer |
 | DropdownMenu | `src/web/components/ui/dropdown-menu.tsx` | closed / open | menus (theme toggle) |
 | Sheet | `src/web/components/ui/sheet.tsx` | open / closed | the sidebar on narrow windows |
 | Tooltip | `src/web/components/ui/tooltip.tsx` | hidden / shown | collapsed-sidebar labels; app wrapped in `TooltipProvider` |
 | Separator · Skeleton · Breadcrumb | `src/web/components/ui/{separator,skeleton,breadcrumb}.tsx` | default | inset header (trigger · separator · breadcrumb); skeletons used by the sidebar only |
 | NotFound | `src/web/components/NotFound.tsx:5` | default | unknown in-app address |
+| Tabs | `src/web/components/ui/tabs.tsx` | active / inactive | the Speech side panel «Settings» \| «Recent» |
+| Slider | `src/web/components/ui/slider.tsx` | default / dragging / disabled | `thumbProps` gives the thumb (`role="slider"`) its accessible name and value text |
+| Label | `src/web/components/ui/label.tsx` | default | names a field; a labelled trigger button is named by its label («Model», «Voice») |
+| ProviderBalances | `src/web/features/balances/ProviderBalances.tsx` | loading «…» / figure «$12.34» / unavailable «—» (tooltip «Balance unavailable») / hidden (no provider configured, collapsed rail) | each configured provider's remaining credit in the sidebar footer (step 20) |
+| AudioModels | `src/web/features/models/AudioModels.tsx` | loading / not configured / list error + Try again / empty / prefs unreadable (toggles disabled) / save failed / No longer offered + Forget | the Models page's Audio view: speech-model table with ★ and «Show in picker» (step 20) |
+| ModelSelect | `src/web/features/audio/ModelSelect.tsx` | loading (disabled) / closed / open: «Favorites» first, then grouped by maker (ElevenLabs first); hidden models left out except the selected one, marked «Hidden» (step 20) / selected | speech models as a popover list (like ModelPicker, not a Radix Select): price («$0.08 / 1K chars», «Free», «priced per …», «price unknown») + limit («5 000 chars · limit not published») |
+| VoiceSelect | `src/web/features/audio/VoiceSelect.tsx` | loading / list / filter (> 20 voices) / provider default + typed name (model lists none) | voice dot colour is stable per voice |
+| VoiceControls | `src/web/features/audio/VoiceControls.tsx` | slider / steps (labelled) / switch / text (≤ 1 000) / none («No adjustable settings for this model») / Reset values | renders the model's control descriptors from `src/shared/speech-models.ts` |
+| CostLabel | `src/web/features/audio/CostLabel.tsx` | known / pending («cost pending · ≈ $x») / unavailable (muted, «≈ $x») | never «$0» for an unknown cost; two significant digits, «< $0.0001» |
+| RecentRecordings | `src/web/features/audio/RecentRecordings.tsx` | loading / empty / error + Try again / list / pending refresh (10 s) / reuse / Replace your text? (`ReplaceTextDialog`) / delete (`DeleteRecording`: confirm · Deleting… · failed) | the step-19 audio gallery card grows from this row |
+| SpeechPage | `src/web/features/audio/SpeechPage.tsx` | SCR-02 / SCR-03 states in `docs/features/text-to-speech/screens.md`; Reuse arrival (`?reuse=`) per `docs/features/audio-gallery/screens.md` SCR-08 | the `/audio/speech` section; side panel as a Sheet below `lg` |
+| Tile · CardBadges | `src/web/features/gallery/Tile.tsx`, `CardBadges.tsx` | default / image unavailable / pending cost (watcher) / tags + comment marker | the image gallery card |
+| GalleryViews · ByModel · ByPrompt | `src/web/features/gallery/` | view switch / model choice (counts, error + Try again) / sections with «Show all N» | image gallery views |
+| GenerationDialog · GenerationDetail · Notes | `src/web/features/gallery/` | dialog over the grid / full page / Notes = `NotesCard` with image calls | image detail; built on the media-gallery layer |
+| MediaDialog | `src/web/features/media-gallery/MediaDialog.tsx` | open / stepping (Newer, Older, ← →) / busy («Save or cancel your changes first») / loading next / next failed / «<Noun> deleted.» / not in order | the shared dialog engine (audio-gallery ADR-0049); arrows inside text fields and media players never step |
+| NotesCard | `src/web/features/media-gallery/NotesCard.tsx` | no comment / editing (n / 2000) / saving / validation / tags + add | one comment + tags for any medium |
+| usePagingSentinel · gridPlace · notice · scrollMemory | `src/web/features/media-gallery/` | — | shared grid paging, close-to-place, one-off notices, per-view scroll |
+| RecordingCard | `src/web/features/audio/gallery/RecordingCard.tsx` | default / playing / audio unavailable / cost pending (watcher) / tags «+N» + comment marker / Reuse | the audio gallery card (step 21 reuses it) |
+| PresetSelect | `src/web/features/audio/presets/PresetSelect.tsx` | loading / none («No voice preset») / applied / modified («name · modified») / list by name (Hidden, No longer offered — not pickable, with a note) / empty / error + Try again / Save disabled while unchanged / ⋯ Rename · Delete · Detach | the Speech page's preset row (voice-presets SCR-01) |
+| SavePresetDialog · RenamePresetDialog · DeletePresetDialog | `src/web/features/audio/presets/PresetDialogs.tsx` | name field (suggested, validation under the field, «Couldn't save — try again.») / Update «name» or Save as new / delete confirm with the recording count, «Couldn't delete — try again.» | voice-presets SCR-02, SCR-03, SCR-07 |
+| VoicesPage (list · PresetCard · preset page) | `src/web/features/audio/presets/VoicesPage.tsx` | list: loading / empty + Go to Speech / error + Try again / cards (No longer offered, Apply disabled) / «Voice deleted.»; page: header + RecordingCard grid with paging / empty / gone / error | the `/audio/voices` section (voice-presets SCR-04, SCR-05); the grid opens RecordingDialog over itself |
+| RecordingDialog · RecordingPage (RecordingDetail) | `src/web/features/audio/gallery/` | SCR-04 / SCR-05 states in `docs/features/audio-gallery/screens.md` | a recording's dialog and page |
+| AudioGallery · AudioGalleryViews · AudioByModel | `src/web/features/audio/gallery/` | SCR-02 / SCR-03 states in `docs/features/audio-gallery/screens.md` | the `/audio/gallery` section |
 
 ## Interaction & writing conventions
 

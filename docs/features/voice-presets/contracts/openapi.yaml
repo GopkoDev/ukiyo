@@ -1,0 +1,220 @@
+openapi: 3.1.0
+info:
+  title: Ukiyo — voice-presets
+  version: 0.1.0
+  description: >
+    Delta for roadmap step 21. (1) New voice-preset resource under /audio/presets: list (with stats), get, create,
+    update (rename and/or replace the setup), delete. (2) POST /audio/recordings accepts an optional presetId; the
+    server links the recording only when its setup equals the preset (ADR-0058) and never refuses because of it.
+    (3) GET /audio/recordings gains a `preset` filter; every Recording carries `preset` (id + name, or null).
+    Every /api route passes the request guard (ADR-0007); errors use { error: { code, message, details? } }.
+servers:
+  - url: http://127.0.0.1:8787/api
+security: []
+paths:
+  /audio/presets:
+    get:
+      operationId: listVoicePresets
+      summary: Every preset by name (case-insensitive) with its count, known total, pending/unavailable counts and last use
+      responses:
+        "200":
+          description: All presets (no paging — a few dozen at most; NFR tested at 200)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VoicePresetsResponse" }
+              example:
+                presets:
+                  - id: 01JB0000000000000000000000
+                    name: Narrator
+                    provider: openrouter
+                    model: elevenlabs/eleven-v3
+                    modelName: ElevenLabs v3
+                    voice: george
+                    settings: { speed: 1.1, stability: 0.5 }
+                    createdAt: "2026-10-25T10:00:00.000Z"
+                    updatedAt: "2026-10-25T10:00:00.000Z"
+                    stats: { recordings: 3, knownCostMicros: 420000, pending: 1, unavailable: 0, lastUsedAt: "2026-10-25T12:00:00.000Z" }
+        "403": { description: FORBIDDEN (request guard), content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+    post:
+      operationId: createVoicePreset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreatePresetRequest" }
+            example: { name: Narrator, model: elevenlabs/eleven-v3, voice: george, settings: { speed: 1.1 } }
+      responses:
+        "201": { description: The saved preset (settings = the model's accepted subset), content: { application/json: { schema: { $ref: "#/components/schemas/VoicePreset" } } } }
+        "400":
+          description: "VALIDATION_ERROR — details.fields.name («Enter a name» / «At most 60 characters» / «A voice named «X» already exists»), .model (not offered), .voice"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example: { error: { code: VALIDATION_ERROR, message: "A voice named «Narrator» already exists", details: { fields: { name: "A voice named «Narrator» already exists" } } } }
+        "403": { description: FORBIDDEN, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "409": { description: PROVIDER_NOT_CONFIGURED, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "502": { description: "PROVIDER_ERROR — no speech model list was ever read and it can't be read now", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /audio/presets/{presetId}:
+    parameters:
+      - { name: presetId, in: path, required: true, schema: { $ref: "#/components/schemas/Ulid" } }
+    get:
+      operationId: getVoicePreset
+      responses:
+        "200": { description: The preset with its stats, content: { application/json: { schema: { $ref: "#/components/schemas/VoicePreset" } } } }
+        "403": { description: FORBIDDEN, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "404": { description: NOT_FOUND — no such preset (also a malformed id), content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+    patch:
+      operationId: updateVoicePreset
+      summary: Rename and/or replace the setup; past recordings are never changed (AC-06)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdatePresetRequest" }
+            examples:
+              rename: { value: { name: Narrator calm } }
+              update: { value: { model: elevenlabs/eleven-v3, voice: george, settings: { speed: 1.0 } } }
+      responses:
+        "200": { description: The preset after the change, content: { application/json: { schema: { $ref: "#/components/schemas/VoicePreset" } } } }
+        "400": { description: "VALIDATION_ERROR — as create; also an empty body or a partial setup", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "403": { description: FORBIDDEN, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "404": { description: NOT_FOUND, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "409": { description: PROVIDER_NOT_CONFIGURED — setup change only, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "502": { description: PROVIDER_ERROR — setup change only (as create), content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+    delete:
+      operationId: deleteVoicePreset
+      summary: Deletes the preset and its links; its recordings stay, unlinked (AC-07, AC-08)
+      responses:
+        "204": { description: Deleted }
+        "403": { description: FORBIDDEN, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "404": { description: NOT_FOUND, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /audio/recordings:
+    get:
+      operationId: listRecordings
+      summary: "Changed: optional `preset` filter (exclusive with `model`); newest first, cursor by id"
+      parameters:
+        - { name: cursor, in: query, schema: { type: string, pattern: "^[0-9A-Z]{1,26}$" } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 10 } }
+        - { name: model, in: query, schema: { type: string, minLength: 1, maxLength: 100 } }
+        - { name: preset, in: query, schema: { $ref: "#/components/schemas/Ulid" }, description: "one preset's recordings; an unknown preset = an empty page" }
+      responses:
+        "200": { description: A page, content: { application/json: { schema: { $ref: "#/components/schemas/RecordingPage" } } } }
+        "400": { description: "VALIDATION_ERROR — bad cursor/limit/preset, or both model and preset", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "403": { description: FORBIDDEN, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+    post:
+      operationId: createRecording
+      summary: "Changed: optional presetId — linked only when model, voice and settingsFor(settings) equal the preset's (ADR-0058)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StartSpeechRequest" }
+            example: { text: "Hello there.", model: elevenlabs/eleven-v3, voice: george, settings: { speed: 1.1 }, presetId: 01JB0000000000000000000000 }
+      responses:
+        "201": { description: "The saved recording; preset = the linked preset or null (an unknown, different or deleted preset never fails the request)", content: { application/json: { schema: { $ref: "#/components/schemas/Recording" } } } }
+        "400": { description: "VALIDATION_ERROR (unchanged) — also a malformed presetId, refused before any provider call", content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "403": { description: FORBIDDEN, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "409": { description: PROVIDER_NOT_CONFIGURED (unchanged), content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "500": { description: STORAGE_ERROR (unchanged), content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "502": { description: PROVIDER_ERROR (unchanged), content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+components:
+  schemas:
+    Ulid: { type: string, pattern: "^[0-9A-Z]{26}$" }
+    VoiceSettings:
+      type: object
+      additionalProperties: false
+      description: As text-to-speech (src/shared/speech.ts VoiceSettings)
+      properties:
+        speed: { type: number, minimum: 0.25, maximum: 4 }
+        stability: { type: number, minimum: 0, maximum: 1 }
+        similarity: { type: number, minimum: 0, maximum: 1 }
+        style: { type: number, minimum: 0, maximum: 1 }
+        speakerBoost: { type: boolean }
+        instructions: { type: string }
+    PresetName: { type: string, description: "trimmed; 1–60 characters as seen (graphemes); unique ignoring case" }
+    PresetStats:
+      type: object
+      required: [recordings, knownCostMicros, pending, unavailable, lastUsedAt]
+      properties:
+        recordings: { type: integer, minimum: 0 }
+        knownCostMicros: { type: [integer, "null"], minimum: 0, description: "sum of known costs; null = no recording has a known cost" }
+        pending: { type: integer, minimum: 0 }
+        unavailable: { type: integer, minimum: 0 }
+        lastUsedAt: { type: [string, "null"], format: date-time, description: "createdAt of the newest linked recording; null = never used" }
+    VoicePreset:
+      type: object
+      required: [id, name, provider, model, modelName, voice, settings, createdAt, updatedAt, stats]
+      properties:
+        id: { $ref: "#/components/schemas/Ulid" }
+        name: { $ref: "#/components/schemas/PresetName" }
+        provider: { type: string, minLength: 1, maxLength: 32 }
+        model: { type: string, minLength: 1, maxLength: 100 }
+        modelName: { type: string, minLength: 1, maxLength: 200 }
+        voice: { type: [string, "null"], minLength: 1, maxLength: 100, description: "null = provider default voice" }
+        settings: { $ref: "#/components/schemas/VoiceSettings" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        stats: { $ref: "#/components/schemas/PresetStats" }
+    VoicePresetsResponse:
+      type: object
+      required: [presets]
+      properties: { presets: { type: array, items: { $ref: "#/components/schemas/VoicePreset" } } }
+    PresetSetup:
+      type: object
+      required: [model]
+      properties:
+        model: { type: string, minLength: 1, maxLength: 100 }
+        voice: { type: [string, "null"], minLength: 1, maxLength: 100, default: null }
+        settings: { $ref: "#/components/schemas/VoiceSettings" }
+    CreatePresetRequest:
+      allOf:
+        - $ref: "#/components/schemas/PresetSetup"
+        - type: object
+          required: [name]
+          properties: { name: { type: string } }
+    UpdatePresetRequest:
+      type: object
+      additionalProperties: false
+      description: "name and/or the full setup (model required when voice or settings are given); at least one"
+      properties:
+        name: { type: string }
+        model: { type: string, minLength: 1, maxLength: 100 }
+        voice: { type: [string, "null"], minLength: 1, maxLength: 100 }
+        settings: { $ref: "#/components/schemas/VoiceSettings" }
+    PresetRef:
+      type: object
+      required: [id, name]
+      properties: { id: { $ref: "#/components/schemas/Ulid" }, name: { $ref: "#/components/schemas/PresetName" } }
+    StartSpeechRequest:
+      type: object
+      required: [text, model]
+      properties:
+        text: { type: string, minLength: 1, maxLength: 40000 }
+        model: { type: string, minLength: 1, maxLength: 100 }
+        voice: { type: [string, "null"], minLength: 1, maxLength: 100, default: null }
+        settings: { $ref: "#/components/schemas/VoiceSettings" }
+        presetId: { type: [string, "null"], pattern: "^[0-9A-Z]{26}$", default: null, description: "new — the applied, unchanged preset" }
+    Recording:
+      type: object
+      description: "As audio-gallery's Recording, plus `preset`"
+      required: [id, preset]
+      properties:
+        id: { $ref: "#/components/schemas/Ulid" }
+        preset: { oneOf: [{ $ref: "#/components/schemas/PresetRef" }, { type: "null" }], description: "new — the linked preset, null when unlinked" }
+    RecordingPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/Recording" } }
+        nextCursor: { type: [string, "null"] }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, enum: [VALIDATION_ERROR, NOT_FOUND, PROVIDER_ERROR, INTERNAL_ERROR, GENERATION_IN_PROGRESS, PROVIDER_NOT_CONFIGURED, STORAGE_ERROR, FORBIDDEN] }
+            message: { type: string }
+            details: { type: object }

@@ -1,4 +1,4 @@
-import type { ProviderRegistry } from "../providers/registry";
+import type { CostLookup } from "../providers/port";
 import { toCost } from "./domain";
 import type { GenerationsRepo, PendingCost } from "./repo";
 
@@ -25,16 +25,20 @@ const realTimers: Timers = {
   clear: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
 };
 
+export type CostLookupFn = (costRef: string, signal: AbortSignal) => Promise<CostLookup>;
+
 export type CostSyncDeps = {
   repo: Pick<GenerationsRepo, "resolveCost" | "listPendingCosts">;
-  providers: ProviderRegistry;
+  /** The provider's deferred-price lookup, or `undefined` when it has none (its costs settle as unavailable). */
+  lookupFor: (provider: string) => CostLookupFn | undefined;
   now?: () => number;
   timers?: Timers;
 };
 
 /**
  * Resolves `pending` costs in the background (ADR-0013): bounded lookups through the provider's optional
- * `lookupCost`, ending in `known` or `unavailable`; on boot it resumes from the DB. Provider-agnostic.
+ * `lookupCost`, ending in `known` or `unavailable`; on boot it resumes from the DB. Provider-agnostic, and
+ * repo-agnostic: images and recordings each run an instance over their own repo (ADR-0043).
  */
 export function createCostSync(deps: CostSyncDeps) {
   const now = deps.now ?? Date.now;
@@ -48,7 +52,7 @@ export function createCostSync(deps: CostSyncDeps) {
 
   /** One lookup; `true` when the cost was settled (known or unavailable). */
   async function lookOnce(entry: PendingCost): Promise<boolean> {
-    const lookup = deps.providers.get(entry.provider)?.lookupCost;
+    const lookup = deps.lookupFor(entry.provider);
     if (!lookup || !entry.costRef) {
       finish(entry.id, null);
       return true;
@@ -104,7 +108,7 @@ export function createCostSync(deps: CostSyncDeps) {
 
   /** Start resolving a freshly saved pending cost. */
   function track(entry: PendingCost): void {
-    if (entry.costRef && deps.providers.get(entry.provider)?.lookupCost) schedule(entry, plan(entry));
+    if (entry.costRef && deps.lookupFor(entry.provider)) schedule(entry, plan(entry));
     else finish(entry.id, null);
   }
 

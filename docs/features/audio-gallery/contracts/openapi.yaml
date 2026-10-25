@@ -1,0 +1,246 @@
+openapi: 3.1.0
+info:
+  title: Ukiyo — audio-gallery
+  version: 0.2.0
+  description: >
+    Roadmap step 19: the audio gallery's contract — a delta over the text-to-speech contract
+    (../../text-to-speech/contracts/openapi.yaml), whose other operations are unchanged. The list gains a model
+    filter, a model-groups read serves the model choice and «By model» (ADR-0051), and recordings get tags and
+    one comment stored apart from image ones (ADR-0047). Every recording now carries `tags` and `comment`
+    (additive). Display names never wait on the speech catalog (ADR-0052). Every /api route passes the request
+    guard (ADR-0007) — a foreign origin gets 403 FORBIDDEN (spec AC-19).
+servers:
+  - url: http://127.0.0.1:8787/api
+security: []  # no auth by design (single owner); the request guard replaces it
+paths:
+  /audio/recordings:
+    get:
+      operationId: listRecordings
+      summary: Recordings newest first, all or one speech model (AC-01, AC-13, AC-15, AC-21); recent list = limit 10, gallery = 24
+      parameters:
+        - { name: cursor, in: query, required: false, schema: { type: string, pattern: "^[0-9A-Z]{1,26}$" }, description: "the id of the last recording shown" }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 10 } }
+        - { name: model, in: query, required: false, schema: { type: string, minLength: 1, maxLength: 100 }, description: "exact speech model id (audio_generations.model); absent = every model" }
+      responses:
+        "200":
+          description: One page; an unknown model gives an empty page (AC-15)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecordingPage" }
+              example:
+                nextCursor: null
+                items:
+                  - { id: 01JB0000000000000000000003, createdAt: "2026-10-25T10:00:00.000Z", provider: openrouter, model: elevenlabs/eleven-v3, modelName: Eleven v3, voice: george, text: "Welcome to the show.", settings: { stability: 0.5, similarity: 0.75 }, mediaType: audio/mpeg, characters: 20, costMicros: 1600, costStatus: known, estimateMicros: 1600, durationMs: 2140, url: /api/audio/recordings/01JB0000000000000000000003/file, tags: [narration], comment: null }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /audio/recordings/models:
+    get:
+      operationId: listRecordingModels
+      summary: Every speech model with recordings, its count, newest id, one display name and its latest N recordings, ordered by newest recording (AC-13, AC-14, AC-21)
+      parameters:
+        - { name: latest, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 24, default: 0 }, description: "recordings per group; «By model» asks 4, the model choice 0 or 4 (one shared cache)" }
+      responses:
+        "200":
+          description: Groups, the most recently used model first
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecordingModelGroupsResponse" }
+              example:
+                models:
+                  - { provider: openrouter, model: elevenlabs/eleven-v3, modelName: Eleven v3, count: 12, latestId: 01JB0000000000000000000003, items: [] }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /audio/recordings/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, pattern: "^[0-9A-Z]{26}$" } }
+    get:
+      operationId: getRecording
+      summary: One recording with its tags and comment (AC-05, AC-06)
+      responses:
+        "200":
+          description: The recording
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Recording" }
+              examples:
+                recording: { $ref: "#/components/examples/recording" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteRecording
+      summary: Unchanged from step 18; now also removes its tags and comment (cascade) (AC-11, AC-12)
+      responses:
+        "204": { description: "Deleted with its file, tags and comment" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+  /audio/recordings/{id}/comment:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, pattern: "^[0-9A-Z]{26}$" } }
+    put:
+      operationId: setRecordingComment
+      summary: Replace the recording's comment; empty or whitespace-only removes it (AC-07, AC-08)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetCommentRequest" }
+            example: { body: "Use this take for the intro." }
+      responses:
+        "200":
+          description: The comment as stored, or null when removed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommentResponse" }
+              example: { comment: { body: "Use this take for the intro.", updatedAt: "2026-10-25T10:00:00.000Z" } }
+        "400":
+          description: VALIDATION_ERROR, details.fields.body
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example: { error: { code: VALIDATION_ERROR, message: "Comment must be at most 2 000 characters", details: { fields: { body: "Comment must be at most 2 000 characters" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /audio/recordings/{id}/tags:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, pattern: "^[0-9A-Z]{26}$" } }
+    post:
+      operationId: addRecordingTag
+      summary: Add one normalized tag; a duplicate changes nothing; at most 10 (AC-07, AC-08, AC-10)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AddTagRequest" }
+            example: { tag: "  Intro  Take " }
+      responses:
+        "200":
+          description: The recording's tags in insertion order
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TagsResponse" }
+              example: { tags: [narration, intro take] }
+        "400":
+          description: VALIDATION_ERROR, details.fields.tag (rule or the 10-tag limit)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example: { error: { code: VALIDATION_ERROR, message: "Tags may contain letters, digits, spaces, - and _ (1–32 characters)", details: { fields: { tag: "Tags may contain letters, digits, spaces, - and _ (1–32 characters)" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /audio/recordings/{id}/tags/{tag}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, pattern: "^[0-9A-Z]{26}$" } }
+      - { name: tag, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 64 }, description: "URL-encoded normalized tag; an absent tag changes nothing" }
+    delete:
+      operationId: removeRecordingTag
+      summary: Remove one tag (AC-07)
+      responses:
+        "200":
+          description: The remaining tags in insertion order
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TagsResponse" }
+              example: { tags: [narration] }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+components:
+  responses:
+    Error:
+      description: >
+        VALIDATION_ERROR 400 (details.fields: query | model | latest | tag | body) · FORBIDDEN 403 (foreign origin) ·
+        NOT_FOUND 404 («Recording not found») · STORAGE_ERROR 500 («Couldn't delete this recording»)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example: { error: { code: NOT_FOUND, message: "Recording not found" } }
+  examples:
+    recording:
+      value:
+        id: 01JB0000000000000000000003
+        createdAt: "2026-10-25T10:00:00.000Z"
+        provider: openrouter
+        model: elevenlabs/eleven-v3
+        modelName: Eleven v3
+        voice: george
+        text: "Welcome to the show."
+        settings: { stability: 0.5, similarity: 0.75 }
+        mediaType: audio/mpeg
+        characters: 20
+        costMicros: null
+        costStatus: pending
+        estimateMicros: 1600
+        durationMs: 2140
+        url: /api/audio/recordings/01JB0000000000000000000003/file
+        tags: [narration]
+        comment: null
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, enum: [VALIDATION_ERROR, FORBIDDEN, NOT_FOUND, STORAGE_ERROR] }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+    Comment:
+      type: object
+      required: [body, updatedAt]
+      properties:
+        body: { type: string, minLength: 1, description: "≤ 2 000 characters (code points); kept exactly as written" }
+        updatedAt: { type: string, format: date-time }
+    Tag: { type: string, minLength: 1, maxLength: 64, description: "normalized (NFC, trimmed, inner spaces collapsed, lower-case), 1–32 characters" }
+    SetCommentRequest:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string }
+    AddTagRequest:
+      type: object
+      required: [tag]
+      properties:
+        tag: { type: string, maxLength: 200, description: "raw; normalized server-side by the shared rule" }
+    CommentResponse:
+      type: object
+      required: [comment]
+      properties:
+        comment: { oneOf: [{ $ref: "#/components/schemas/Comment" }, { type: "null" }] }
+    TagsResponse:
+      type: object
+      required: [tags]
+      properties:
+        tags: { type: array, maxItems: 10, items: { $ref: "#/components/schemas/Tag" } }
+    Recording:
+      description: The step-18 Recording plus `tags` and `comment` (additive, ADR-0051)
+      allOf:
+        - $ref: "../../text-to-speech/contracts/openapi.yaml#/components/schemas/Recording"
+        - type: object
+          required: [tags, comment]
+          properties:
+            modelName: { type: string, description: "the model's one display name: newest stored name for this model id, else the last catalog read, else the id (ADR-0052)" }
+            tags: { type: array, maxItems: 10, items: { $ref: "#/components/schemas/Tag" } }
+            comment: { oneOf: [{ $ref: "#/components/schemas/Comment" }, { type: "null" }] }
+    RecordingPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/Recording" } }
+        nextCursor: { type: [string, "null"] }
+    RecordingModelGroup:
+      type: object
+      required: [provider, model, modelName, count, latestId, items]
+      properties:
+        provider: { type: string }
+        model: { type: string, maxLength: 100 }
+        modelName: { type: string }
+        count: { type: integer, minimum: 1 }
+        latestId: { type: string }
+        items: { type: array, items: { $ref: "#/components/schemas/Recording" } }
+    RecordingModelGroupsResponse:
+      type: object
+      required: [models]
+      properties:
+        models: { type: array, items: { $ref: "#/components/schemas/RecordingModelGroup" } }

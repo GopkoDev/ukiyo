@@ -1,23 +1,47 @@
 import { type AnchorHTMLAttributes, type MouseEvent, useSyncExternalStore } from "react";
 import type { GalleryView } from "@/features/gallery/galleryView";
 
-// History API only (ADR-0009). A generation's address is the detail route; every other path is a page path
-// that the section registry matches (ADR-0022). The server falls back to index.html for all of them.
-type RouteBase = { name: "detail"; id: string } | { name: "page"; pathname: string; search: string };
+// History API only (ADR-0009). A generation's address is the detail route, a recording's the recording route
+// (audio-gallery ADR-0048); every other path is a page path that the section registry matches (ADR-0022). The
+// server falls back to index.html for all of them.
+type RouteBase =
+  | { name: "detail"; id: string }
+  | { name: "recording"; id: string }
+  | { name: "page"; pathname: string; search: string };
+/** The route kinds that show one item (a section's detail page or dialog). */
+export type DetailRouteName = "detail" | "recording";
+export const isDetailRoute = (r: Route): r is Route & { name: DetailRouteName; id: string } =>
+  r.name === "detail" || r.name === "recording";
 export type Route = RouteBase & { state?: unknown };
 
 /** Random per module load: a reload or a new tab gets a new id, so a kept history state reads as a direct visit (ADR-0033). */
 export const APP_LOAD: string = Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+/** The galleries whose grid may open the dialog, per detail route kind (a preset page opens recordings too, ADR-0059). */
+const DIALOG_OF: Record<DetailRouteName, readonly string[]> = {
+  detail: ["gallery"],
+  recording: ["audio-gallery", "voices"],
+};
 
 /** The history state the grid pushes when it opens a generation as a dialog over itself. */
 export function dialogState(views: { grid: GalleryView; order: GalleryView }) {
   return { dialog: "gallery", load: APP_LOAD, ...views } as const;
 }
 
-/** A detail route reached from this load's grid: show the grid with the dialog, not the full page. */
+/** The same for any gallery: its id and the views it carries (audio-gallery ADR-0048). */
+export function mediaDialogState<V>(gallery: string, views: { grid: V; order: V }) {
+  return { dialog: gallery, load: APP_LOAD, ...views } as const;
+}
+
+/** A detail route reached from this load's own grid: show the grid with the dialog, not the full page. */
 export function isDialogVisit(route: Route): boolean {
   const s = route.state as { dialog?: unknown; load?: unknown } | null | undefined;
-  return route.name === "detail" && s?.dialog === "gallery" && s.load === APP_LOAD;
+  return isDetailRoute(route) && DIALOG_OF[route.name].includes(String(s?.dialog)) && s?.load === APP_LOAD;
+}
+
+/** The gallery whose grid opened this dialog visit; none on a direct visit (ADR-0059). */
+export function dialogGallery(route: Route): string | undefined {
+  return isDialogVisit(route) ? String((route.state as { dialog?: unknown }).dialog) : undefined;
 }
 
 const NAV_EVENT = "gen-img:navigate";
@@ -33,7 +57,10 @@ function subscribe(onChange: () => void) {
 
 export function parseRoute(pathname: string, search = ""): RouteBase {
   const m = /^\/generations\/([^/]+)\/?$/.exec(pathname);
-  return m?.[1] ? { name: "detail", id: decodeURIComponent(m[1]) } : { name: "page", pathname, search };
+  if (m?.[1]) return { name: "detail", id: decodeURIComponent(m[1]) };
+  const r = /^\/audio\/recordings\/([^/]+)\/?$/.exec(pathname);
+  if (r?.[1]) return { name: "recording", id: decodeURIComponent(r[1]) };
+  return { name: "page", pathname, search };
 }
 
 export function useRoute(): Route {

@@ -149,6 +149,12 @@ describe("migration runner", () => {
       "0008",
       "0009",
       "0010",
+      "0011",
+      "0012",
+      "0013",
+      "0014",
+      "0015",
+      "0016",
     ]);
     expect(appliedVersions(db)).toEqual([
       "0001",
@@ -161,9 +167,21 @@ describe("migration runner", () => {
       "0008",
       "0009",
       "0010",
+      "0011",
+      "0012",
+      "0013",
+      "0014",
+      "0015",
+      "0016",
     ]);
     expect(migrateUp(db)).toEqual([]);
 
+    expect(migrateDown(db)?.version).toBe("0016");
+    expect(migrateDown(db)?.version).toBe("0015");
+    expect(migrateDown(db)?.version).toBe("0014");
+    expect(migrateDown(db)?.version).toBe("0013");
+    expect(migrateDown(db)?.version).toBe("0012");
+    expect(migrateDown(db)?.version).toBe("0011");
     expect(migrateDown(db)?.version).toBe("0010");
     expect(migrateDown(db)?.version).toBe("0009");
     expect(migrateDown(db)?.version).toBe("0008");
@@ -188,6 +206,12 @@ describe("migration runner", () => {
       "0008",
       "0009",
       "0010",
+      "0011",
+      "0012",
+      "0013",
+      "0014",
+      "0015",
+      "0016",
     ]);
   });
 
